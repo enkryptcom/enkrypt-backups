@@ -1,0 +1,44 @@
+{
+	// https://www.typescriptlang.org/tsconfig
+	"include": ["./src"],
+	"exclude": ["./build"],
+	"compilerOptions": {
+		// Project
+		"incremental": false,                             // https://www.typescriptlang.org/tsconfig/#incremental
+		"tsBuildInfoFile": "./build.never/.tsbuildinfo",  // https://www.typescriptlang.org/tsconfig/#tsBuildInfoFile
+
+		// Language & Environment
+		"target": "ES2023",                               // https://www.typescriptlang.org/tsconfig/#target
+		"moduleDetection": "force",                       // https://www.typescriptlang.org/tsconfig/#rootDir
+
+		// Module
+		"module": "Node16",                               // https://www.typescriptlang.org/tsconfig/#module
+		"moduleResolution": "Node16",                     // https://www.typescriptlang.org/tsconfig/#moduleResolution
+		"useDefineForClassFields": true,                  // https://www.typescriptlang.org/tsconfig/#useDefineForClassFields
+		"rootDir": "./src",                               // https://www.typescriptlang.org/tsconfig/#rootDir
+		"noUncheckedSideEffectImports": true,             // https://www.typescriptlang.org/tsconfig/#noUncheckedSideEffectImports
+
+		// Emit
+		"noEmitOnError": true,                            // https://www.typescriptlang.org/tsconfig/#noEmitOnError
+		"noEmit": true,                                   // https://www.typescriptlang.org/tsconfig/#noEmit
+		"outDir": "./build.never",                        // https://www.typescriptlang.org/tsconfig/#outDir
+		"removeComments": true,                           // https://www.typescriptlang.org/tsconfig/#removeComments
+		"sourceMap": true,                                // https://www.typescriptlang.org/tsconfig/#sourceMap
+		"importHelpers": true,                            // https://www.typescriptlang.org/tsconfig/#importHelpers
+
+		// Type checking
+		"strict": true,                                   // https://www.typescriptlang.org/tsconfig/#strict
+		"alwaysStrict": true,                             // https://www.typescriptlang.org/tsconfig/#alwaysStrict
+		"useUnknownInCatchVariables": true,               // https://www.typescriptlang.org/tsconfig/#useUnknownInCatchVariables
+		"noFallthroughCasesInSwitch": true,               // https://www.typescriptlang.org/tsconfig/#noFallthroughCasesInSwitch
+
+		// Interop constraints
+		"esModuleInterop": true,                          // https://www.typescriptlang.org/tsconfig/#esModuleInterop
+		"verbatimModuleSyntax": true,                     // https://www.typescriptlang.org/tsconfig/#verbatimModuleSyntax
+		"forceConsistentCasingInFileNames": true,         // https://www.typescriptlang.org/tsconfig/#forceConsistentCasingInFileNames
+		"noImplicitOverride": true,                       // https://www.typescriptlang.org/tsconfig/#noImplicitOverride
+
+		// Completeness
+		"skipLibCheck": true,                             // https://www.typescriptlang.org/tsconfig/#skipLibCheck
+	}
+}
