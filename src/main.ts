@@ -192,7 +192,7 @@ const drainStderr = process.stderr.writableNeedDrain
 if (drainStdout || drainStderr) {
 	const promises: Promise<void>[] = []
 	if (drainStdout) {
-		// Write nothing to stdout and wait for it to drain
+		// Wait for stdout to drain
 		promises.push(new Promise(function(res, rej) {
 			function onDrain() {
 				cleanup()
@@ -211,7 +211,7 @@ if (drainStdout || drainStderr) {
 		}))
 	}
 	if (drainStderr) {
-		// Write nothing to stderr and wait for it to drain
+		// Wait for stderr to drain
 		promises.push(new Promise(function(res, rej) {
 			function onDrain() {
 				cleanup()
