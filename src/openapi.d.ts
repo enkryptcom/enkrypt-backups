@@ -85,7 +85,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/backups/{pubkey}": {
+    "/backups/{publicKey}": {
         parameters: {
             query?: never;
             header?: never;
@@ -97,7 +97,7 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    pubkey: components["parameters"]["pubkey"];
+                    publicKey: components["parameters"]["PublicKey"];
                 };
                 cookie?: never;
             };
@@ -114,7 +114,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/backups/{pubkey}/{userId}": {
+    "/backups/{publicKey}/{userId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -128,8 +128,8 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    pubkey: components["parameters"]["pubkey"];
-                    userId: components["parameters"]["userId"];
+                    publicKey: components["parameters"]["PublicKey"];
+                    userId: components["parameters"]["UserId"];
                 };
                 cookie?: never;
             };
@@ -153,6 +153,8 @@ export interface components {
         Bytes64: string;
         Hex: string;
         UUID: string;
+        PublicKey: components["schemas"]["Bytes64"];
+        UserId: components["schemas"]["UUID"];
         GetHealthResponse: {
             message: string;
         };
@@ -218,10 +220,11 @@ export interface components {
         };
     };
     parameters: {
-        pubkey: components["schemas"]["Bytes64"];
-        userId: components["schemas"]["UUID"];
+        PublicKey: components["schemas"]["PublicKey"];
+        UserId: components["schemas"]["UserId"];
     };
     requestBodies: {
+        /** @description hi! */
         PostBackup: {
             content: {
                 "application/json": components["schemas"]["PostBackupRequest"];

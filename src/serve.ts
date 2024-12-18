@@ -2,7 +2,7 @@ import { strictEqual } from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import fs from 'node:fs/promises';
 import compression from 'compression'
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import express, { type Request, type Response, type Express, type ErrorRequestHandler } from 'express';
 import type { Logger } from 'pino';
 import cors from 'cors'
@@ -21,9 +21,10 @@ import { parseBytes } from './utils/size.js';
 import type { OpenAPIV3_1 } from 'openapi-types'
 import type { components } from './openapi.js';
 import { ecrecover, fromRpcSig, hashPersonalMessage, } from '@ethereumjs/util';
-import { bytesToByteString, byteStringToBytes, parseByteString, parseUUID } from './utils/coersion.js';
+import { bufferToByteString, bytesToByteString, byteStringToBytes, parseByteString, parseUUID } from './utils/coersion.js';
 import { FilesystemStorage } from './storage/filesystem.js';
 import { S3 } from '@aws-sdk/client-s3';
+import { inspect } from 'node:util';
 
 const SOFT_REQ_TIMEOUT_INTERVAL = 5_000
 const SOFT_REQ_TIMEOUT_DURATION = 2_500
@@ -31,8 +32,10 @@ const SOFT_REQ_TIMEOUT_DURATION = 2_500
 const HARD_REQ_TIMEOUT_INTERVAL = 10_000
 const HARD_REQ_TIMEOUT_DURATION = 5_000
 
-const MAX_HEADERS_SIZE = 1024
+const MAX_HEADERS_SIZE = 1024; // parseBytes('1kib')
 const KEEPALIVE_TIMEOUT = 5_000
+
+const MAX_BODY_SIZE = 1024 * 1024; // parseBytes('1mib')
 
 const ErrorMessage = {
 	SIGNATURE_DOES_NOT_MATCH_PUBKEY: 'Signature does not match pubkey',
@@ -207,6 +210,9 @@ class HttpValidator<T> {
 	private readonly _schemaValidator: ValidateFunction<T>
 	constructor(schemaValidator: ValidateFunction<T>) {
 		this._schemaValidator = schemaValidator
+		if (!this._schemaValidator) {
+			throw new Error(`Invalid schemaValidator: ${schemaValidator}`)
+		}
 	}
 	validate(value: unknown): T {
 		const ok = this._schemaValidator(value)
@@ -226,16 +232,19 @@ type GetBackupsResponse = components['schemas']['GetBackupsResponse']
 type GetBackupsResponseItem = components['schemas']['GetBackupsResponseItem']
 type PostBackupRequest = components['schemas']['PostBackupRequest']
 type PostBackupResponse = components['schemas']['PostBackupResponse']
-type PubkeyParameter = components['parameters']['userId']
-type UserIdParameter = components['parameters']['userId']
+type PubkeyParameter = components['parameters']['UserId']
+type UserIdParameter = components['parameters']['UserId']
 
 type Validators = {
-	pubkeyParameter: HttpValidator<components['parameters']['pubkey']>,
-	userIdParameter: HttpValidator<components['parameters']['userId']>,
+	pubkeyParameter: HttpValidator<components['parameters']['PublicKey']>,
+	userIdParameter: HttpValidator<components['parameters']['UserId']>,
 	postBackupRequest: HttpValidator<components['schemas']['PostBackupRequest']>
 }
 
-async function setup(opts: CommandOptions, disposer: Disposer): Promise<CommandConfig> {
+export async function setup(
+	opts: CommandOptions,
+	disposer: Disposer,
+): Promise<CommandConfig> {
 	const {
 		bindAddr,
 		bindPort,
@@ -255,9 +264,14 @@ async function setup(opts: CommandOptions, disposer: Disposer): Promise<CommandC
 		strict: true,
 	})
 
+	// OpenAPI is slightly incompatible with JSON schema, add some
+	// vocabulary to avoid errors when we compile the schemas
 	ajv.addVocabulary([
 		// OpenAPI root elements
 		'parameters',
+		'name',
+		'in',
+		'schema',
 		// OpenAPI Request/Response (relative) root element
 		'content',
 	])
@@ -281,17 +295,9 @@ async function setup(opts: CommandOptions, disposer: Disposer): Promise<CommandC
 	}
 
 	const validators: Validators = {
-		postBackupRequest: new HttpValidator(ajv.getSchema('#/components/requestBodies/PostBackup')!),
-		pubkeyParameter: new HttpValidator(ajv.getSchema('#/components/parameters/pubkey')!),
-		userIdParameter: new HttpValidator(ajv.getSchema('#/components/parameters/userId')!),
-	}
-
-	const missingValidators: string[] = []
-	for (const [key, val] of Object.entries(validators)) {
-		if (val === undefined) missingValidators.push(key)
-	}
-	if (missingValidators.length > 0) {
-		throw new Error(`Missing validators: ${missingValidators.join(', ')}`)
+		postBackupRequest: new HttpValidator(ajv.getSchema('#/components/schemas/PostBackupRequest')!),
+		pubkeyParameter: new HttpValidator(ajv.getSchema('#/components/schemas/PublicKey')!),
+		userIdParameter: new HttpValidator(ajv.getSchema('#/components/schemas/UserId')!),
 	}
 
 	// TODO: implement S3
@@ -483,9 +489,8 @@ export function createHttpAppRouter(opts: {
 	// Cors
 	app.use(cors({ origin: origins, }))
 
-	// Allow JSON bodies or raw bodies
-	app.use(express.json({ limit: parseBytes('50mb') }))
-	app.use(express.raw({ limit: parseBytes('50mb'), type: 'application/octet-stream' }))
+	// Parse JSON bodies when Header Content-Type=application/json
+	app.use(express.json({ limit: MAX_BODY_SIZE, }))
 
 	// Health check
 	app.get('/health', function(_req, res, _next) {
@@ -509,7 +514,10 @@ export function createHttpAppRouter(opts: {
 	app.get('/backups/:pubkey', async function(req, res, next) {
 		try {
 			const pubkey = parseByteString(validators.pubkeyParameter.validate(req.params.pubkey))
-			const backups = await storage.getUserBackups(req.ctx, pubkey)
+			const hasher = createHash('sha256')
+			hasher.update(byteStringToBytes(pubkey))
+			const pubkeyHash = parseByteString(hasher.digest('hex'))
+			const backups = await storage.getUserBackups(req.ctx, pubkeyHash)
 			if (backups == null) {
 				throw new HttpError(HttpStatus.NotFound, 'No backups found')
 			}
@@ -553,7 +561,11 @@ export function createHttpAppRouter(opts: {
 				payload: bytesToByteString(payload),
 			}
 
-			await storage.saveUserBackup(req.ctx, pubkey, userId, backup)
+			const hasher = createHash('sha256')
+			hasher.update(byteStringToBytes(pubkey))
+			const pubkeyHash = bufferToByteString(hasher.digest())
+
+			await storage.saveUserBackup(req.ctx, pubkeyHash, userId, backup)
 
 			const response: PostBackupResponse = { message: 'Ok' }
 
@@ -599,9 +611,9 @@ export function createHttpAppRouter(opts: {
 }
 
 function renderProdError(err: HttpError): Record<PropertyKey, unknown> {
-	// Status, message
+	// Message
 	const result: Record<PropertyKey, unknown> = {
-		status: err.status,
+		// status: err.status,
 		message: err.message,
 	}
 	// Bind "data" properties to the root

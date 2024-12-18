@@ -175,8 +175,8 @@ export function bufferToBytes(buf: Buffer): Uint8Array {
 	return new Uint8Array(buf);
 }
 
-export function bufferToByteString(buf: Buffer): string {
-	return '0x' + buf.toString('hex');
+export function bufferToByteString(buf: Buffer): ByteString {
+	return '0x' + buf.toString('hex') as ByteString;
 }
 
 export function stringToNumber(numberString: string): number {

@@ -22,18 +22,18 @@ paths:
         200:
           $ref: '#/components/responses/GetSchemaSuccess'
 
-  /backups/{pubkey}:
+  /backups/{publicKey}:
     get:
       parameters:
-        - $ref: '#/components/parameters/pubkey'
+        - $ref: '#/components/parameters/PublicKey'
       responses:
         200:
           $ref: '#/components/responses/GetBackupsSuccess'
 
-  /backups/{pubkey}/{userId}:
+  /backups/{publicKey}/{userId}:
     post:
       parameters:
-        - $ref: '#/components/parameters/Pubkey'
+        - $ref: '#/components/parameters/PublicKey'
         - $ref: '#/components/parameters/UserId'
       requestBody:
         $ref: '#/components/requestBodies/PostBackup'
@@ -43,19 +43,19 @@ paths:
 
 components:
   parameters:
-    Pubkey:
-      name: pubkey
+    PublicKey:
+      name: publicKey
       in: path
       # required: true # OpenAPI 3.0 property not compatible with JSON schema
       schema:
-        $ref: '#/components/schemas/Bytes64'
+        $ref: '#/components/schemas/PublicKey'
 
     UserId:
       name: userId
       in: path
       # required: true # OpenAPI 3.0 property not compatible with JSON schema
       schema:
-        $ref: '#/components/schemas/UUID'
+        $ref: '#/components/schemas/UserId'
 
   requestBodies:
     PostBackup:
@@ -111,6 +111,10 @@ components:
     UUID:
       type: string
       pattern: ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$
+    PublicKey:
+      $ref: '#/components/schemas/Bytes64'
+    UserId:
+      $ref: '#/components/schemas/UUID'
 
     GetHealthResponse:
       type: object

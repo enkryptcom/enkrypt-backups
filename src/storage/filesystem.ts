@@ -7,6 +7,7 @@ import type { Backup, FileStorage } from './interface.js'
 import { gunzip as gunzipCb, gzip as gzipCb } from 'node:zlib'
 import { promisify } from 'node:util'
 import type { Dirent } from 'node:fs'
+import { ok, strictEqual } from 'node:assert'
 
 const gunzip = promisify(gunzipCb)
 const gzip = promisify(gzipCb)
@@ -27,22 +28,25 @@ export class FilesystemStorage implements FileStorage {
 	}
 
 	getPubkeyHashDirpath(pubkeyHash: Hash): string {
-		// How many levels do we want?
-		// We typcaily want no more than 1,000 files per directory
-		// so how should we partition the bytes?
-		// If we expect 1,000,000 addresses and want at most 1,000 files per directory, then
-		// letting `n` be the number of levels
-		// 1,000 ** n = 1,000,000
-		// n = log(1,000,000) / log(1,000) = 2
-		// If a pubkey hash is 32 bytes that means a directory has 32 / 2 = 16 bytes (2+32 hex chars)
-		// To be safe let's just break it down by setting n = 4, that let's us store
-		// 1,000,000,000,000 pubkeys averaging 1,000 files per directory
-		// Therefore we have 32 / 4 = 8, 8 bytes (2 + 16 hex chars) per directory
-		const dirnames: string[] = [this._rootDirpath]
-		for (let i = 2, len = pubkeyHash.length; i < len; i += 16) {
-			dirnames.push(pubkeyHash.slice(i, i + 16))
-		}
-		return normalize(join(...dirnames))
+		// Partition the directories so they don't get too big and make the filesystem suck
+		strictEqual(pubkeyHash.length, 66, 'Expected pubkey hash to be 32 bytes')
+		const p0 = pubkeyHash.slice(2, 4)    // first 8 bits   (2 ** 8 = 256 partitions)
+		const p1 = pubkeyHash.slice(4, 6)    // bits 8 to 16   (2 ** 8 = 256 partitions)
+		const p2 = pubkeyHash.slice(6, 8)    // bits 16 to 24  (2 ** 8 = 256 partitions)
+		const p3 = pubkeyHash.slice(8, 10)   // bits 24 to 32  (2 ** 8 = 256 partitions)
+		const p4 = pubkeyHash.slice(10, 12)  // bits 32 to 40  (2 ** 8 = 256 partitions)
+		const rest = pubkeyHash.slice(12)    // bits 40 to 256 (possibly lots of files)
+
+		return normalize(join(
+			this._rootDirpath,
+			'backups',
+			p0,
+			p1,
+			p2,
+			p3,
+			p4,
+			rest
+		))
 	}
 
 	getPubkeyHashUserIdFilepath(pubkeyHash: Hash, userId: UUID): string {
