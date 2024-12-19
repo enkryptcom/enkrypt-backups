@@ -50,14 +50,14 @@ export class S3Storage implements FileStorage {
 		await this._s3.putObject({
 			Bucket: this._bucket,
 			Key: key,
-			// ContentType: 'application/json',
-			// ContentEncoding: 'gzip',
+			ContentType: 'application/json',
+			ContentEncoding: 'gzip',
 			Body: data,
-			// Metadata: {
-			// 	pubkeyHash,
-			// 	userId,
-			// 	updatedAt: backup.updatedAt,
-			// }
+			Metadata: {
+				pubkeyHash,
+				userId,
+				updatedAt: backup.updatedAt,
+			}
 		})
 	}
 

@@ -7,7 +7,7 @@
 		"codegen:openapi": "openapi-typescript openapi.yaml --output src/openapi.d.ts",
 		"dev": "pnpm build:clean && pnpm build:only && concurrently -n \"build,run\" \"pnpm build:watch:only\" \"pnpm start:watch\"",
 		"start": "node --env-file ./.env --enable-source-maps ./build/main.js serve",
-		"start:watch": "nodemon --delay 0.1 -w ./build -w ./.env -w ./openapi.yaml -w ./package.json -e .js,.json -x \"pnpm start serve\"",
+		"start:watch": "nodemon --delay 0.1 -w ./build -w ./.env -w ./openapi.yaml -w ./package.json -e .js,.json -x \"pnpm start\"",
 		"build": "pnpm clean && pnpm build:only",
 		"build:only": "tsc -p ./config/tsconfig.build.json",
 		"build:watch": "pnpm clean && pnpm build:watch:only",
