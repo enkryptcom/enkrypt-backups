@@ -15,12 +15,13 @@ export type EnvironmentVariables = {
 	BIND_ADDR?: string
 	BIND_PORT?: string
 
-	// TODO: implement S3 storage
-	// STORAGE_TYPE?: string
-	// FILESYSTEM_STORAGE_ROOT_DIRPATH?: string
-	//
-	// S3_STORAGE_BUCKET_NAME?: string
-	// S3_STORAGE_BUCKET_REGION?: string
+	STORAGE_DRIVER?: string
+
+	FILESYSTEM_STORAGE_ROOT_DIRPATH?: string
+
+	S3_STORAGE_BUCKET_NAME?: string
+	S3_STORAGE_BUCKET_REGION?: string
+	S3_STORAGE_BUCKET_ROOT_PATH?: string
 }
 
 declare global {

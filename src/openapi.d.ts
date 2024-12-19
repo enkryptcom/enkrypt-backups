@@ -169,7 +169,9 @@ export interface components {
         PostBackupResponse: {
             message: string;
         };
-        GetBackupsResponse: components["schemas"]["GetBackupsResponseItem"][];
+        GetBackupsResponse: {
+            backups: components["schemas"]["GetBackupsResponseItem"][];
+        };
         GetBackupsResponseItem: {
             /** Format: date-time */
             updatedAt: string;

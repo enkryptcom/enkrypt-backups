@@ -17,20 +17,19 @@ import { boolOpt } from './utils/options.js';
 import EventEmitter from 'node:events';
 import { createStopSignalHandler } from './utils/signals.js';
 import type { Backup, FileStorage } from './storage/interface.js';
-import { parseBytes } from './utils/size.js';
 import type { OpenAPIV3_1 } from 'openapi-types'
 import type { components } from './openapi.js';
 import { ecrecover, fromRpcSig, hashPersonalMessage, } from '@ethereumjs/util';
 import { bufferToByteString, bytesToByteString, byteStringToBytes, parseByteString, parseUUID } from './utils/coersion.js';
 import { FilesystemStorage } from './storage/filesystem.js';
 import { S3 } from '@aws-sdk/client-s3';
-import { inspect } from 'node:util';
+import { S3Storage } from './storage/s3.js';
 
-const SOFT_REQ_TIMEOUT_INTERVAL = 5_000
 const SOFT_REQ_TIMEOUT_DURATION = 2_500
+const SOFT_REQ_TIMEOUT_CHECK_INTERVAL = 5_000
 
-const HARD_REQ_TIMEOUT_INTERVAL = 10_000
 const HARD_REQ_TIMEOUT_DURATION = 5_000
+const HARD_REQ_TIMEOUT_CHECK_INTERVAL = 10_000
 
 const MAX_HEADERS_SIZE = 1024; // parseBytes('1kib')
 const KEEPALIVE_TIMEOUT = 5_000
@@ -62,7 +61,12 @@ function printHelp(stream: Writable): void {
 	stream.write('  --bind-addr <addr>             Address to listen on            BIND_ADDR     127.0.0.1\n')
 	stream.write('  --[no-]debug                   Enable debug logging of errors  DEBUG         false\n')
 	stream.write('Environment Variables\n')
-	stream.write('  WHITELIST_ORIGINS              JSON array of regex for whitelisted CORS origns  []\n')
+	stream.write('  WHITELIST_ORIGINS                JSON array of regex for whitelisted CORS origns  []\n')
+	stream.write('  STORAGE_DRIVER                   fs or s3                                         fs\n')
+	stream.write('  FILESYSTEM_STORAGE_ROOT_DIRPATH  Root directory for filesystem storage            storage\n')
+	stream.write('  S3_STORAGE_BUCKET_NAME           S3 bucket name\n')
+	stream.write('  S3_STORAGE_BUCKET_REGION         S3 bucket region\n')
+	stream.write('  S3_STORAGE_BUCKET_ROOT_PATH      Path within the S3 bucket\n')
 }
 
 export async function serve(globalOpts: GlobalOptions): Promise<number> {
@@ -72,6 +76,11 @@ export async function serve(globalOpts: GlobalOptions): Promise<number> {
 	let bindAddr = env.BIND_ADDR || '127.0.0.1'
 	let debugOpt = env.DEBUG || 'false'
 	let originsOpt = env.WHITELIST_ORIGINS || '[]'
+	const storageDriver = env.STORAGE_DRIVER || 'fs'
+	const storageRootDirpath = env.FILESYSTEM_STORAGE_ROOT_DIRPATH || 'storage'
+	const s3BucketName = env.S3_STORAGE_BUCKET_NAME
+	const s3BucketRegion = env.S3_STORAGE_BUCKET_REGION || undefined
+	const s3BucketRootPath = env.S3_STORAGE_BUCKET_ROOT_PATH || undefined
 
 	let parsedArgs = false
 	let argi = 0
@@ -134,16 +143,73 @@ export async function serve(globalOpts: GlobalOptions): Promise<number> {
 		return 1
 	}
 
+	let storageConfig: StorageConfig
+	switch (storageDriver) {
+		case 'fs': {
+			if (!storageRootDirpath) {
+				printHelp(stderr)
+				stderr.write('\n')
+				stderr.write('Missing FILESYSTEM_STORAGE_ROOT_DIRPATH with STORAGE_DRIVER=fs\n')
+				return 1
+			}
+			storageConfig = {
+				driver: StorageDriver.FS,
+				rootDirpath: storageRootDirpath,
+			}
+			break;
+		}
+		case 's3': {
+			if (!s3BucketName) {
+				printHelp(stderr)
+				stderr.write('\n')
+				stderr.write('Missing S3_STORAGE_BUCKET_NAME with STORAGE_DRIVER=s3\n')
+				return 1
+			}
+			storageConfig = {
+				driver: StorageDriver.S3,
+				bucket: s3BucketName,
+				region: s3BucketRegion,
+				rootPath: s3BucketRootPath,
+			}
+			break;
+		}
+		default: {
+			printHelp(stderr)
+			stderr.write('\n')
+			stderr.write(`Invalid STORAGE_DRIVER: ${storageDriver}\n`)
+			return 1
+		}
+	}
+
 	await cmd({
 		logger,
 		bindAddr,
 		bindPort,
 		origins,
 		debug,
+		storageConfig,
 	})
 
 	return 0
 }
+
+export const StorageDriver = {
+	FS: 'FS',
+	S3: 'S3',
+} as const
+export type StorageDriver = typeof StorageDriver[keyof typeof StorageDriver]
+
+type FilesytemStorageConfig = {
+	driver: typeof StorageDriver.FS,
+	rootDirpath: string,
+}
+type S3StorageConfig = {
+	driver: typeof StorageDriver.S3,
+	bucket: string,
+	region: undefined | string,
+	rootPath: undefined | string,
+}
+type StorageConfig = FilesytemStorageConfig | S3StorageConfig
 
 type CommandOptions = {
 	logger: Logger,
@@ -151,6 +217,7 @@ type CommandOptions = {
 	bindPort: number,
 	debug: boolean,
 	origins: RegExp[],
+	storageConfig: StorageConfig,
 }
 
 async function cmd(cmdOpts: CommandOptions): Promise<void> {
@@ -251,6 +318,7 @@ export async function setup(
 		logger,
 		debug,
 		origins,
+		storageConfig,
 	} = opts
 
 	const httpServer = createServer()
@@ -300,25 +368,31 @@ export async function setup(
 		userIdParameter: new HttpValidator(ajv.getSchema('#/components/schemas/UserId')!),
 	}
 
-	// TODO: implement S3
-	// switch ('' as string) {
-	// 	case 'fs':
-	// 		break;
-	// 	case 's3':
-	// 		new S3({
-	// 			region,
-	// 			requestHandler: {
-	// 				//
-	// 			}
-	// 		})
-	// 		break;
-	// 	default:
-	// 		throw new Error(`Invalid STORAGE_TYPE: ${''}`)
-	// }
-	const storage = new FilesystemStorage({
-		fs,
-		rootDirpath: 'storage',
-	})
+	let storage: FileStorage;
+	switch (storageConfig.driver) {
+		case StorageDriver.FS: {
+			storage = new FilesystemStorage({
+				fs,
+				rootDirpath: storageConfig.rootDirpath,
+			})
+			break;
+		}
+		case StorageDriver.S3: {
+			// Use default credentials & request handler stuff
+			const s3 = new S3({
+				region: storageConfig.region,
+			})
+			storage = new S3Storage({
+				s3,
+				bucket: storageConfig.bucket,
+				rootPath: storageConfig.rootPath,
+			})
+			break;
+		}
+		default:
+			storageConfig satisfies never
+			throw new Error(`Invalid STORAGE_TYPE: ${(storageConfig as StorageConfig).driver}`)
+	}
 
 	const httpAppRouter = createHttpAppRouter({
 		disposer,
@@ -348,7 +422,7 @@ export function createServer(): Server {
 		keepAliveTimeout: KEEPALIVE_TIMEOUT,
 		maxHeaderSize: MAX_HEADERS_SIZE,
 		requestTimeout: HARD_REQ_TIMEOUT_DURATION,
-		connectionsCheckingInterval: HARD_REQ_TIMEOUT_INTERVAL,
+		connectionsCheckingInterval: HARD_REQ_TIMEOUT_CHECK_INTERVAL,
 	})
 
 	return server
@@ -447,7 +521,7 @@ export function createHttpAppRouter(opts: {
 				inflightReqs.delete(req)
 			}
 		}
-	}, SOFT_REQ_TIMEOUT_INTERVAL)
+	}, SOFT_REQ_TIMEOUT_CHECK_INTERVAL)
 
 	disposer.defer(function() {
 		logger.trace('Clearing HTTP request soft timeout interval timer')
@@ -516,20 +590,23 @@ export function createHttpAppRouter(opts: {
 			const pubkey = parseByteString(validators.pubkeyParameter.validate(req.params.pubkey))
 			const hasher = createHash('sha256')
 			hasher.update(byteStringToBytes(pubkey))
-			const pubkeyHash = parseByteString(hasher.digest('hex'))
+			const pubkeyHash = bufferToByteString(hasher.digest())
 			const backups = await storage.getUserBackups(req.ctx, pubkeyHash)
 			if (backups == null) {
 				throw new HttpError(HttpStatus.NotFound, 'No backups found')
 			}
-			const response: GetBackupsResponse = new Array(backups.length)
+			const responseBackups = new Array(backups.length)
 			for (let i = 0, len = backups.length; i < len; i++) {
 				const backup = backups[i]
-				const item: GetBackupsResponseItem = {
+				const responseBackup: GetBackupsResponseItem = {
 					userId: backup.userId,
 					payload: backup.payload,
 					updatedAt: backup.updatedAt
 				}
-				response.push(item)
+				responseBackups[i] = responseBackup
+			}
+			const response: GetBackupsResponse = {
+				backups: responseBackups,
 			}
 			res.status(HttpStatus.OK).json(response)
 		} catch (err) {

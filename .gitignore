@@ -2,6 +2,7 @@ node_modules/
 build/
 build.test/
 /storage/
+/storage.tests/
 .env
 .env*
 !.env.example

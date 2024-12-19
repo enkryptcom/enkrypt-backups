@@ -7,7 +7,7 @@ import type { Backup, FileStorage } from './interface.js'
 import { gunzip as gunzipCb, gzip as gzipCb } from 'node:zlib'
 import { promisify } from 'node:util'
 import type { Dirent } from 'node:fs'
-import { ok, strictEqual } from 'node:assert'
+import { strictEqual } from 'node:assert'
 
 const gunzip = promisify(gunzipCb)
 const gzip = promisify(gzipCb)

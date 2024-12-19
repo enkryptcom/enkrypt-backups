@@ -1,26 +1,28 @@
-import { ok } from "node:assert/strict";
 import { describe, it } from "node:test";
-import { createHttpAppRouter, createServer, setup } from "../serve.js";
-import { levels, pino } from "pino";
+import { setup, StorageDriver } from "../serve.js";
+import { pino } from "pino";
 import { Disposer } from "../utils/disposer.js";
-import http, { IncomingMessage } from 'node:http'
-import type { Socket } from "node:net";
+import http from 'node:http'
 import type { components } from "../openapi.js";
-import { deepStrictEqual, strictEqual } from "node:assert";
+import { deepStrictEqual, ok, strictEqual } from "node:assert";
 import { readFile } from "node:fs/promises";
 import { parse as parseYaml } from 'yaml'
-import { OpenAPIV3, type OpenAPIV3_1 } from "openapi-types";
-import { constants, createCipheriv, publicEncrypt, randomBytes, randomUUID } from "node:crypto";
+import { type OpenAPIV3_1 } from "openapi-types";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { ecsign, hashPersonalMessage, privateToPublic, toRpcSig, } from '@ethereumjs/util'
-import { keccak256, } from 'ethereum-cryptography/keccak'
-import { bufferToBytes, bufferToByteString, bytesToByteString, parseByteString } from "../utils/coersion.js";
+import { bufferToByteString, bytesToByteString, byteStringToBytes, parseByteString } from "../utils/coersion.js";
 import pinoPretty from 'pino-pretty'
+import { join } from "node:path";
+import { gunzip, } from 'node:zlib'
+import type { Backup } from "../storage/interface.js";
+
 
 describe('e2e', { timeout: 10_000, }, function() {
+	// YOLO
 	it('should work', async function() {
 		const logger = pino(pinoPretty({ singleLine: true, colorize: true, sync: true, }))
-		logger.level = 'silent'
-		// logger.level = 'trace'
+		// logger.level = 'silent'
+		logger.level = 'trace'
 		await using disposer = new Disposer()
 		const config = await setup({
 			logger,
@@ -28,6 +30,10 @@ describe('e2e', { timeout: 10_000, }, function() {
 			bindAddr: '127.0.0.1',
 			bindPort: 3002,
 			origins: [],
+			storageConfig: {
+				driver: StorageDriver.FS,
+				rootDirpath: 'storage.tests',
+			}
 		}, disposer)
 
 		const { httpServer, httpAppRouter, bindPort, bindAddr, } = config
@@ -289,5 +295,96 @@ describe('e2e', { timeout: 10_000, }, function() {
 		})
 
 		deepStrictEqual(postBackupResult, { message: 'Ok', })
+
+		// Check that we find our (not actually) encrypted backup in the filesystem
+		// (file path comes from `storage/filesystem`)
+		const pubkeyHasher = createHash('sha256')
+		pubkeyHasher.update(byteStringToBytes(pubkey))
+		const pubkeyHash = bufferToByteString(pubkeyHasher.digest())
+		const filepath = join(
+			'storage.tests',
+			'backups',
+			pubkeyHash.slice(2, 4),
+			pubkeyHash.slice(4, 6),
+			pubkeyHash.slice(6, 8),
+			pubkeyHash.slice(8, 10),
+			pubkeyHash.slice(10, 12),
+			pubkeyHash.slice(12),
+			`${userId}.json.gz`
+		)
+		const mockBackupInFilesystem: Backup = await readFile(filepath)
+			.then((file) => new Promise(function(res, rej) {
+				gunzip(file, function(err, content) {
+					if (err) rej(err)
+					else {
+						try {
+							const json = content.toString('utf8')
+							const data = JSON.parse(json) as Backup
+							res(data)
+						} catch (err) {
+							rej(err)
+						}
+					}
+				})
+			}))
+
+		strictEqual(mockBackupInFilesystem.payload, bufferToByteString(mockEncryptedBackup), 'Payload mismatch')
+
+		// Check we can retrieve it using the API
+		type GetBackupsResult = components['schemas']['GetBackupsResponse']
+		const getBackupsResult = await new Promise<GetBackupsResult>(function(res, rej) {
+			const request = http.request({
+				host: bindAddr,
+				port: bindPort,
+				path: `/backups/${pubkey}`,
+				method: 'GET',
+				signal: AbortSignal.timeout(5_000),
+				headers: { 'content-type': 'application/json' },
+			})
+
+			request.on('response', function(response: http.IncomingMessage) {
+				if (response.statusCode !== 200) {
+					rej(new Error(`Expected GET backups status code 200, got ${response.statusCode}`))
+					return
+				}
+
+				let errRef: { err: Error } | undefined
+				let chunks: Buffer[] = []
+				response.on('data', function(chunk) {
+					chunks.push(chunk)
+				})
+				response.on('error', function(err) {
+					errRef = { err }
+				})
+				response.on('end', function() {
+					if (errRef) rej(errRef.err)
+					else {
+						try {
+							const json = Buffer.concat(chunks).toString('utf8')
+							const data = JSON.parse(json)
+							res(data)
+						} catch (err) {
+							rej(new Error(`Failed to parse JSON: ${(err as Error)?.message}`))
+						}
+					}
+				})
+			})
+
+			request.on('error', function(err) {
+				rej(err)
+			})
+
+			request.end()
+		})
+
+		ok(getBackupsResult && typeof getBackupsResult === 'object', 'Expected object')
+		ok(Array.isArray(getBackupsResult.backups), 'Expected array')
+		deepStrictEqual(getBackupsResult, {
+			backups: [{
+				userId,
+				updatedAt: getBackupsResult.backups[0].updatedAt, // :)
+				payload: bufferToByteString(mockEncryptedBackup),
+			}]
+		} satisfies components['schemas']['GetBackupsResponse'])
 	})
 })
