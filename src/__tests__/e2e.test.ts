@@ -28,6 +28,7 @@ describe('e2e', { timeout: 10_000, }, function() {
 		const config = await setup({
 			logger,
 			debug: false,
+			checkConfig: false,
 			bindAddr: '127.0.0.1',
 			bindPort: 3002,
 			origins: [],

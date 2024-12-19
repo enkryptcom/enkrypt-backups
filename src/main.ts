@@ -87,7 +87,8 @@ async function main(argv: string[], env: EnvironmentVariables): Promise<number> 
 					stderr.write(`Unknown option: ${argv[argi]}\n`)
 					return 1
 				} else {
-					cmd = argv[argi++]
+					cmd = argv[argi]
+					parsedArgs = true
 				}
 		}
 		argi++

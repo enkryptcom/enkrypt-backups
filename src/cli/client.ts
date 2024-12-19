@@ -9,14 +9,15 @@ import { bufferToByteString, bytesToByteString, parseByteString } from "../utils
 import { ecsign, hashPersonalMessage, privateToPublic, toRpcSig } from "@ethereumjs/util"
 import type { components } from "../openapi.js"
 import { inspect } from "node:util"
+import { boolOpt } from "../utils/options.js"
 
 function printHelp(stream: Writable): void {
 	stream.write(`Usage: node [options] client [options]\n`)
 	stream.write('\n')
 	stream.write('Options:\n')
-	stream.write('  -h, --help       Print this help message\n')
-	stream.write('  -v, --version    Print the version\n')
-	stream.write('  --api-url <url>  API URL                   http://BIND_ADDR:BIND_PORT  http://localhost:3000\n')
+	stream.write('  -h, --help            Print this help message\n')
+	stream.write('  -v, --version         Print the version\n')
+	stream.write('  --api-url <url>       API URL                   http://BIND_ADDR:BIND_PORT  http://localhost:3000\n')
 }
 
 export async function serve(globalOpts: GlobalOptions): Promise<number> {

@@ -24,7 +24,7 @@ export function boolOpt(value: boolean | number | string): undefined | boolean {
 				case '0':
 				case 'f':
 				case 'false':
-					return true
+					return false
 				default:
 					return undefined
 			}

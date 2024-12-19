@@ -24,6 +24,7 @@ import { bufferToByteString, bytesToByteString, byteStringToBytes, parseByteStri
 import { FilesystemStorage } from '../storage/filesystem.js';
 import { S3 } from '@aws-sdk/client-s3';
 import { S3Storage } from '../storage/s3.js';
+import { sleep } from '../utils/helpers.js';
 
 const SOFT_REQ_TIMEOUT_DURATION = 2_500
 const SOFT_REQ_TIMEOUT_CHECK_INTERVAL = 5_000
@@ -63,6 +64,7 @@ function printHelp(stream: Writable): void {
 	stream.write('  --bind-port <port>             Port to listen on               BIND_PORT     3000\n')
 	stream.write('  --bind-addr <addr>             Address to listen on            BIND_ADDR     127.0.0.1\n')
 	stream.write('  --[no-]debug                   Enable debug logging of errors  DEBUG         false\n')
+	stream.write('  --[no-]check-config            Check the configuration                       false\n')
 	stream.write('Environment Variables\n')
 	stream.write('  WHITELIST_ORIGINS                JSON array of regex for whitelisted CORS origns  []\n')
 	stream.write('  STORAGE_DRIVER                   fs or s3                                         fs\n')
@@ -79,6 +81,7 @@ export async function serve(globalOpts: GlobalOptions): Promise<number> {
 	let bindAddr = env.BIND_ADDR || '127.0.0.1'
 	let debugOpt = env.DEBUG || 'false'
 	let originsOpt = env.WHITELIST_ORIGINS || '[]'
+	let checkConfigOpt = 'false'
 	const storageDriver = env.STORAGE_DRIVER || 'fs'
 	const storageRootDirpath = env.FILESYSTEM_STORAGE_ROOT_DIRPATH || 'storage'
 	const s3BucketName = env.S3_STORAGE_BUCKET_NAME
@@ -111,6 +114,12 @@ export async function serve(globalOpts: GlobalOptions): Promise<number> {
 			case '--no-debug':
 				debugOpt = 'false'
 				break
+			case '--check-config':
+				checkConfigOpt = 'true'
+				break
+			case '--no-check-config':
+				checkConfigOpt = 'false'
+				break
 			default:
 				printHelp(stderr)
 				stderr.write('\n')
@@ -133,6 +142,14 @@ export async function serve(globalOpts: GlobalOptions): Promise<number> {
 		printHelp(stderr)
 		stderr.write('\n')
 		stderr.write(`Invalid --debug: ${debugOpt}\n`)
+		return 1
+	}
+
+	const checkConfig = boolOpt(checkConfigOpt)
+	if (checkConfig === undefined) {
+		printHelp(stderr)
+		stderr.write('\n')
+		stderr.write(`Invalid check-config: ${checkConfigOpt}\n`)
 		return 1
 	}
 
@@ -190,6 +207,7 @@ export async function serve(globalOpts: GlobalOptions): Promise<number> {
 		bindPort,
 		origins,
 		debug,
+		checkConfig,
 		storageConfig,
 	})
 
@@ -219,13 +237,19 @@ type CommandOptions = {
 	bindAddr: string,
 	bindPort: number,
 	debug: boolean,
+	checkConfig: boolean,
 	origins: RegExp[],
 	storageConfig: StorageConfig,
 }
 
 async function cmd(cmdOpts: CommandOptions): Promise<void> {
+	const { checkConfig, } = cmdOpts
 	await using disposer = new Disposer()
 	const cmdConfig = await setup(cmdOpts, disposer)
+	if (checkConfig) {
+		// Noop
+		return
+	}
 	await run(cmdConfig)
 }
 
@@ -567,6 +591,9 @@ export function createHttpAppRouter(opts: {
 
 	// Parse JSON bodies when Header Content-Type=application/json
 	app.use(express.json({ limit: MAX_BODY_SIZE, }))
+
+	// Serve static files
+	app.use(express.static('public'))
 
 	// Health check
 	app.get('/health', function(_req, res, _next) {
