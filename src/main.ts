@@ -148,7 +148,11 @@ async function main(argv: string[], env: EnvironmentVariables): Promise<number> 
 	try {
 		switch (cmd) {
 			case 'serve': {
-				code = await (await import('./serve.js')).serve(globalOpts)
+				code = await (await import('./cli/serve.js')).serve(globalOpts)
+				break;
+			}
+			case 'client': {
+				code = await (await import('./cli/client.js')).serve(globalOpts)
 				break;
 			}
 			default: {
@@ -158,7 +162,6 @@ async function main(argv: string[], env: EnvironmentVariables): Promise<number> 
 				code = 1
 			}
 		}
-		stdout.write('Hello world\n')
 		code = 0
 	} catch (err) {
 		logger.error({ err }, 'Unhandled error')

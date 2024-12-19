@@ -8,22 +8,22 @@ import type { Logger } from 'pino';
 import cors from 'cors'
 import { Ajv, type ValidateFunction } from 'ajv'
 import { parse as parseYaml, stringify as stringifyYaml, } from 'yaml'
-import type { Context, GlobalOptions } from './types.js';
-import { HttpError, HttpStatus, runHttpServer, type HttpServerControllerEvents } from './utils/http.js';
-import { Disposer } from './utils/disposer.js';
+import type { Context, GlobalOptions } from '../types.js';
+import { HttpError, HttpStatus, runHttpServer, type HttpServerControllerEvents } from '../utils/http.js';
+import { Disposer } from '../utils/disposer.js';
 import { createServer as createHttpServer, type Server } from 'node:http';
 import type { Writable } from 'node:stream';
-import { boolOpt } from './utils/options.js';
+import { boolOpt } from '../utils/options.js';
 import EventEmitter from 'node:events';
-import { createStopSignalHandler } from './utils/signals.js';
-import type { Backup, FileStorage } from './storage/interface.js';
+import { createStopSignalHandler } from '../utils/signals.js';
+import type { Backup, FileStorage } from '../storage/interface.js';
 import type { OpenAPIV3_1 } from 'openapi-types'
-import type { components } from './openapi.js';
+import type { components } from '../openapi.js';
 import { ecrecover, fromRpcSig, hashPersonalMessage, } from '@ethereumjs/util';
-import { bufferToByteString, bytesToByteString, byteStringToBytes, parseByteString, parseUUID } from './utils/coersion.js';
-import { FilesystemStorage } from './storage/filesystem.js';
+import { bufferToByteString, bytesToByteString, byteStringToBytes, parseByteString, parseUUID } from '../utils/coersion.js';
+import { FilesystemStorage } from '../storage/filesystem.js';
 import { S3 } from '@aws-sdk/client-s3';
-import { S3Storage } from './storage/s3.js';
+import { S3Storage } from '../storage/s3.js';
 
 const SOFT_REQ_TIMEOUT_DURATION = 2_500
 const SOFT_REQ_TIMEOUT_CHECK_INTERVAL = 5_000
@@ -144,7 +144,7 @@ export async function serve(globalOpts: GlobalOptions): Promise<number> {
 	}
 
 	let storageConfig: StorageConfig
-	switch (storageDriver) {
+	switch (storageDriver.trim().toLowerCase()) {
 		case 'fs': {
 			if (!storageRootDirpath) {
 				printHelp(stderr)
@@ -511,7 +511,6 @@ export function createHttpAppRouter(opts: {
 
 	// Time-out requests that have been running for too long
 	const softTimeoutInterval = setInterval(function() {
-		// logger.trace('Checking HTTP request soft timeouts', 'reqs', inflight.size)
 		const now = Date.now()
 		const startedAtCutoff = now - SOFT_REQ_TIMEOUT_DURATION
 		for (const req of inflightReqs) {

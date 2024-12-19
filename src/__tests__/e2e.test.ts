@@ -1,5 +1,5 @@
 import { describe, it } from "node:test";
-import { setup, StorageDriver } from "../serve.js";
+import { setup, StorageDriver } from "../cli/serve.js";
 import { pino } from "pino";
 import { Disposer } from "../utils/disposer.js";
 import http from 'node:http'
@@ -21,8 +21,9 @@ describe('e2e', { timeout: 10_000, }, function() {
 	// YOLO
 	it('should work', async function() {
 		const logger = pino(pinoPretty({ singleLine: true, colorize: true, sync: true, }))
-		// logger.level = 'silent'
-		logger.level = 'trace'
+		// You can turn on logging by changing the level to 'trace' to debug the test
+		logger.level = 'silent'
+		// logger.level = 'trace'
 		await using disposer = new Disposer()
 		const config = await setup({
 			logger,
