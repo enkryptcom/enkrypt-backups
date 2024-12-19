@@ -74,7 +74,7 @@ function printHelp(stream: Writable): void {
 	stream.write('  S3_STORAGE_BUCKET_ROOT_PATH      Path within the S3 bucket\n')
 }
 
-export async function serve(globalOpts: GlobalOptions): Promise<number> {
+export default async function serveMain(globalOpts: GlobalOptions): Promise<number> {
 	const { argv, env, stdout, stderr, logger, } = globalOpts
 
 	let bindPortOpt = env.BIND_PORT || '3000'

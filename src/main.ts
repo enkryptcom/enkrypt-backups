@@ -150,11 +150,11 @@ async function main(argv: string[], env: EnvironmentVariables): Promise<number> 
 	try {
 		switch (cmd) {
 			case 'serve': {
-				code = await (await import('./cli/serve.js')).serve(globalOpts)
+				code = await (await import('./cli/serve.js')).default(globalOpts)
 				break;
 			}
 			case 'client': {
-				code = await (await import('./cli/client.js')).serve(globalOpts)
+				code = await (await import('./cli/client.js')).default(globalOpts)
 				break;
 			}
 			default: {
