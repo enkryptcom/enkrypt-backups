@@ -24,7 +24,8 @@ function printHelp(stream: Writable): void {
 	stream.write('  --[no-]log-pretty-single-line  Single line log output                    LOG_PRETTY_SINGLE_LINE false\n')
 	stream.write('\n')
 	stream.write('Commands\n')
-	stream.write('  serve\n')
+	stream.write('  serve     Start the API server\n')
+	stream.write('  client    Start an API client (used for testing)\n')
 }
 
 function printVersion(stream: Writable): void {

@@ -50,25 +50,20 @@ export class S3Storage implements FileStorage {
 		await this._s3.putObject({
 			Bucket: this._bucket,
 			Key: key,
-			ContentType: 'application/json',
-			ContentEncoding: 'gzip',
+			// ContentType: 'application/json',
+			// ContentEncoding: 'gzip',
 			Body: data,
-			Metadata: {
-				pubkeyHash,
-				userId,
-				updatedAt: backup.updatedAt,
-			}
+			// Metadata: {
+			// 	pubkeyHash,
+			// 	userId,
+			// 	updatedAt: backup.updatedAt,
+			// }
 		})
 	}
 
 	async getUserBackups(ctx: Context, pubkeyHash: Hash): Promise<Backup[]> {
 		const prefix = this.getPubkeyHashPrefix(pubkeyHash)
-		ctx.logger.debug({ pubkeyHash, prefix }, 'Listing user backups')
-
-		const params: ListObjectsV2CommandInput = {
-			Bucket: this._bucket,
-			Prefix: prefix,
-		}
+		ctx.logger.debug({ pubkeyHash, prefix }, 'Getting user backups')
 
 		const maxKeys = 50
 		const keys: string[] = [];
@@ -76,8 +71,13 @@ export class S3Storage implements FileStorage {
 		let i = 0
 		const maxi = 3
 		do {
+			const params: ListObjectsV2CommandInput = {
+				Bucket: this._bucket,
+				Prefix: prefix,
+				ContinuationToken: continuationToken,
+			}
 			ctx.signal.throwIfAborted()
-			if (i > maxi) {
+			if (i >= maxi) {
 				ctx.logger.warn({ pubkeyHash, prefix, }, 'Cannot get all user backups, too mange pages.')
 				break;
 			}
@@ -85,7 +85,6 @@ export class S3Storage implements FileStorage {
 				ctx.logger.warn({ pubkeyHash, prefix, }, 'Cannot get all user backups, too many keys.')
 				break;
 			}
-			if (continuationToken) params.ContinuationToken = continuationToken
 			ctx.logger.trace({ pubkeyHash, prefix, params, }, 'Listing user backups')
 			const result = await this._s3.listObjectsV2(params, { abortSignal: ctx.signal, })
 			continuationToken = result.ContinuationToken
@@ -95,7 +94,7 @@ export class S3Storage implements FileStorage {
 				keys.push(item.Key!)
 			}
 			i++
-		} while (!continuationToken)
+		} while (continuationToken)
 
 		keys.splice(maxKeys)
 

@@ -28,6 +28,9 @@ import { S3Storage } from '../storage/s3.js';
 const SOFT_REQ_TIMEOUT_DURATION = 2_500
 const SOFT_REQ_TIMEOUT_CHECK_INTERVAL = 5_000
 
+const LOG_REQ_HEADERS = true
+const LOG_RES_HEADERS = true
+
 const HARD_REQ_TIMEOUT_DURATION = 5_000
 const HARD_REQ_TIMEOUT_CHECK_INTERVAL = 10_000
 
@@ -459,7 +462,7 @@ export function createHttpAppRouter(opts: {
 				duration,
 				statusCode: this.statusCode,
 				statusMessage: this.statusMessage,
-				headers: this.getHeaders(),
+				headers: LOG_RES_HEADERS ? this.getHeaders() : undefined,
 			},
 		}, `HTTP response closed  ${duration}ms   ${this.statusCode} ${this.statusMessage}`)
 		cleanupRes(this)
@@ -474,7 +477,7 @@ export function createHttpAppRouter(opts: {
 				status: this.status,
 				statusCode: this.statusCode,
 				statusMessage: this.statusMessage,
-				headers: this.getHeaders(),
+				headers: LOG_RES_HEADERS ? this.getHeaders() : undefined,
 			},
 		}, `HTTP response finished  ${duration}ms   ${this.statusCode} ${this.statusMessage}`)
 		cleanupRes(this)
@@ -490,7 +493,7 @@ export function createHttpAppRouter(opts: {
 				status: this.status,
 				statusCode: this.statusCode,
 				statusMessage: this.statusMessage,
-				headers: this.getHeaders(),
+				headers: LOG_RES_HEADERS ? this.getHeaders() : undefined,
 			},
 		}, `HTTP response error  ${duration}ms   ${this.statusCode} ${this.statusMessage}`)
 	}
@@ -538,7 +541,7 @@ export function createHttpAppRouter(opts: {
 				id: reqid,
 				method: req.method,
 				url: req.url,
-				headers: req.headers,
+				headers: LOG_REQ_HEADERS ? req.headers : undefined,
 				ip: req.ip,
 				ips: req.ips,
 				remotePort: req.socket.remotePort,
