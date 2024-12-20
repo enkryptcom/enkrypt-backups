@@ -5,6 +5,10 @@ set -euo pipefail
 print_help() {
 	echo "Usage: $0 [options...] destination"
 	echo ""
+	echo "If new dependencies have been installed then the remote server will need"
+	echo "outgoing HTTPS access to NPM. Otherwise, dependencies will be installed from"
+	echo "the remote server's enkryt-api user's pnpm cache."
+	echo ""
 	echo "Positional arguments"
 	echo "  destination        Target server to SSH into and deploy on"
 	echo "                     Example: ubuntu@192.168.1.2"
@@ -14,8 +18,6 @@ print_help() {
 	echo "  -J <destination>   SSH bastion/jump host to connect to -t through"
 	echo "  --nvm-install      Install or reinstall the Node.js target version on the server"
 	echo "                     (Only use if the server has connectivity to NodeJS' servers)"
-	echo "  --pnpm-install     Install the project's dependencies on the server"
-	echo "                     (Only use if the server has connectivity to the project's dependencies)"
 	echo "  --build            Build the project on the server"
 	echo "                     (Not recommended. You should build locally instead.)"
 	echo ""
@@ -23,13 +25,11 @@ print_help() {
 	echo "  $0 user@example.com                           Connect directly to 'example.com'"
 	echo "  $0 -J jump@example.com user@example.com       Connect to 'example.com' via 'jump@example.com' bastion"
 	echo "  $0 --nvm-install user@example.com             Install Node.js on 'example.com'"
-	echo "  $0 --pnpm-install --build user@example.com    Install dependencies and build the project on 'example.com'"
 }
 
 ssh_options=""
 scp_options=""
 nvm_install_opt="false"
-pnpm_install_opt="false"
 build_opt="false"
 ssh_target=""
 
@@ -54,10 +54,6 @@ while [[ $# -gt 0 ]]; do
 			;;
 		--nvm-install)
 			nvm_install_opt="true"
-			shift
-			;;
-		--pnpm-install)
-			pnpm_install_opt="true"
 			shift
 			;;
 		--build)
@@ -98,7 +94,6 @@ fi
 echo "SSH options:  ${ssh_options}"
 echo "SCP options:  ${scp_options}"
 echo "NVM install:  ${nvm_install_opt}"
-echo "PNPM install: ${pnpm_install_opt}"
 echo "Build:        ${build_opt}"
 echo "SSH target:   ${ssh_target}"
 
@@ -187,10 +182,8 @@ fi
 # echo 'Setting Node.js version'
 nvm use
 
-if [ "$pnpm_install_opt" == 'true' ]; then
-	echo 'Installing dependencies'
-	pnpm install
-fi
+echo 'Installing dependencies'
+pnpm install
 
 if [ "$build_opt" == 'true' ]; then
 	echo 'Building the project'

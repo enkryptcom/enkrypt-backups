@@ -1,7 +1,7 @@
 #! /usr/bin/env bash
 
 #
-# This script sets up a new Ubuntu 24.04 server to run the Enkrypt API.
+# This script sets up a new Ubuntu 24.04 server on AWS EC2 to run the Enkrypt API.
 #
 # What this script does:
 # - Updates the system
@@ -211,7 +211,7 @@ sudo chown enkrypt-api:enkrypt-api /opt/enkrypt-api/app
 sudo chmod 750 /opt/enkrypt-api/app
 
 echo "Downloading AWS CLI"
-curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+curl -fL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
 echo "Unzipping AWS CLI"
 unzip -o awscliv2.zip
 echo "Installing AWS CLI"
@@ -221,7 +221,14 @@ rm awscliv2.zip
 rm -rf aws
 
 echo "Downloading Prometheus Node Exporter"
-curl -fSLJO https://github.com/prometheus/node_exporter/releases/download/v1.8.2/node_exporter-1.8.2.linux-amd64.tar.gz
+# Binary download & sha256sum come from the Prometheus Node Exporter GitHub releases (> Assets) page
+# https://github.com/prometheus/node_exporter/releases
+curl -fLJO https://github.com/prometheus/node_exporter/releases/download/v1.8.2/node_exporter-1.8.2.linux-amd64.tar.gz
+echo "Verifying Prometheus Node Exporter download"
+if [[ "$(sha256sum < node_exporter-1.8.2.linux-amd64.tar.gz)" != "6809dd0b3ec45fd6e992c19071d6b5253aed3ead7bf0686885a51d85c6643c66" ]]; then
+	echo "Prometheus Node Exporter failed sha256sum check"
+	exit 1
+fi
 echo "Extracting Prometheus Node Exporter"
 tar xvf node_exporter-1.8.2.linux-amd64.tar.gz
 echo "Setting up Node Exporter executable & symlink"
@@ -234,7 +241,14 @@ rm -rf node_exporter-1.8.2.linux-amd64
 rm node_exporter-1.8.2.linux-amd64.tar.gz
 
 echo "Downloading Promtail"
-curl -fSLJO https://github.com/grafana/loki/releases/download/v3.3.1/promtail-linux-amd64.zip
+# Binary download & sha256sum come from the Loki GitHub releases (> Assets) page
+# https://github.com/grafana/loki/releases
+curl -fLJO https://github.com/grafana/loki/releases/download/v3.3.1/promtail-linux-amd64.zip
+echo "Verifying Promtail download"
+if [[ "$(sha256sum < promtail-linux-amd64.zip)" != "5eb6332cb1a23c55a4151fe59f10f4390f4e7368fe80d881e42f585c6a2503e4" ]]; then
+	echo "Promtail failed sha256sum check"
+	exit 1
+fi
 echo "Extracting Promtail"
 unzip promtail-linux-amd64.zip
 echo "Setting up Promtail executable & symlink"
@@ -290,8 +304,17 @@ set -euo pipefail
 cd /opt/enkrypt-api
 touch .bashrc
 
+echo "Downloading nvm install script"
+curl -fLo nvm-install.sh https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh
+echo "Verifying nvm install script"
+# Hash obtained from "curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | sha256sum"
+if [[ "$(sha256sum < nvm-install.sh)" != "abdb525ee9f5b48b34d8ed9fc67c6013fb0f659712e401ecd88ab989b3af8f53" ]]; then
+	echo "nvm-install.sh failed sha256sum check"
+	exit 1
+fi
 echo "Installing nvm"
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+bash < nvm-install.sh
+rm nvm-install.sh
 source /opt/enkrypt-api/.nvm/nvm.sh
 
 echo "Installing nodejs v23.5.0"
@@ -300,14 +323,14 @@ nvm alias default v23.5.0
 nvm use default
 
 echo "Installing pnpm via npm"
-npm install -g pnpm@9.14.4
+npm install -g pnpm@9.15.0
 
 echo "Setting up pnpm"
 pnpm setup
 source /opt/enkrypt-api/.bashrc
 
 echo "Installing pnpm via pnpm"
-pnpm install -g pnpm@9.14.4
+pnpm install -g pnpm@9.15.0
 
 echo "Removing pnpm from npm"
 npm remove -g pnpm
@@ -481,6 +504,18 @@ EnvironmentFile=/etc/enkrypt-api/node.env
 EnvironmentFile=/etc/enkrypt-api/app.env
 WorkingDirectory=/opt/enkrypt-api/app/current
 ExecStart=/opt/enkrypt-api/.nvm/nvm-exec node /opt/enkrypt-api/app/current/build/main.js serve --check-config
+
+ProtectSystem=strict
+ProtectHome=yes
+ReadOnlyPaths=/usr /bin /lib /lib64 /opt/enkrypt-api/app/current /opt/enkrypt-api/.nvm
+PrivateTmp=true
+PrivateDevices=true
+RestrictAddressFamilies=none
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+NoNewPrivileges=true
+
 ENKRYPT_API_CHECK_CURRENT_CONFIG_SERVICE
 
 echo "Creating up \"enkrypt-api-check-next-config\" systemd service: \"/etc/systemd/system/enkrypt-api-check-next-config.service\""
@@ -496,6 +531,18 @@ EnvironmentFile=/etc/enkrypt-api/node.env
 EnvironmentFile=/etc/enkrypt-api/app.env
 WorkingDirectory=/opt/enkrypt-api/app/next
 ExecStart=/opt/enkrypt-api/.nvm/nvm-exec node /opt/enkrypt-api/app/next/build/main.js serve --check-config
+
+ProtectSystem=strict
+ProtectHome=yes
+ReadOnlyPaths=/usr /bin /lib /lib64 /opt/enkrypt-api/app/current /opt/enkrypt-api/.nvm
+PrivateTmp=true
+PrivateDevices=true
+RestrictAddressFamilies=none
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+NoNewPrivileges=true
+
 ENKRYPT_API_CHECK_NEXT_CONFIG_SERVICE
 
 echo "Enabling node exporter service"
@@ -506,7 +553,7 @@ sudo systemctl start node-exporter.service
 
 echo "Waiting for node exporter to start"
 node_exporter_attempts=0
-while ! curl -s "http://localhost:9100/metrics" >/dev/null; do
+while ! curl -sf "http://localhost:9100/metrics" >/dev/null; do
 	((node_exporter_attempts++)) || true
 	if [ "$node_exporter_attempts" -gt 10 ]; then
 		echo "Failed to start node exporter service"

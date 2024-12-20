@@ -1,7 +1,7 @@
 #! /usr/bin/env bash
 
 #
-# This script sets up a new Ubuntu 24.04 server to run the Enkrypt API.
+# This script sets up a new Ubuntu 24.04 server on AWS EC2 to run the Enkrypt API.
 #
 # What this script does:
 # - Updates the system
@@ -156,7 +156,7 @@ sudo chown root:promtail /etc/promtail
 sudo chmod 550 /etc/promtail
 
 echo "Downloading AWS CLI"
-curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+curl -fL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
 echo "Unzipping AWS CLI"
 unzip -o awscliv2.zip
 echo "Installing AWS CLI"
@@ -166,7 +166,14 @@ rm awscliv2.zip
 rm -rf aws
 
 echo "Downloading Prometheus Node Exporter"
-curl -fSLJO https://github.com/prometheus/node_exporter/releases/download/v1.8.2/node_exporter-1.8.2.linux-amd64.tar.gz
+# Binary download & sha256sum come from the Prometheus Node Exporter GitHub releases (> Assets) page
+# https://github.com/prometheus/node_exporter/releases
+curl -fLJO https://github.com/prometheus/node_exporter/releases/download/v1.8.2/node_exporter-1.8.2.linux-amd64.tar.gz
+echo "Verifying Prometheus Node Exporter download"
+if [[ "$(sha256sum < node_exporter-1.8.2.linux-amd64.tar.gz)" != "6809dd0b3ec45fd6e992c19071d6b5253aed3ead7bf0686885a51d85c6643c66" ]]; then
+	echo "Prometheus Node Exporter failed sha256sum check"
+	exit 1
+fi
 echo "Extracting Prometheus Node Exporter"
 tar xvf node_exporter-1.8.2.linux-amd64.tar.gz
 echo "Setting up Node Exporter executable & symlink"
@@ -179,7 +186,14 @@ rm -rf node_exporter-1.8.2.linux-amd64
 rm node_exporter-1.8.2.linux-amd64.tar.gz
 
 echo "Downloading Promtail"
-curl -fSLJO https://github.com/grafana/loki/releases/download/v3.3.1/promtail-linux-amd64.zip
+# Binary download & sha256sum come from the Loki GitHub releases (> Assets) page
+# https://github.com/grafana/loki/releases
+curl -fLJO https://github.com/grafana/loki/releases/download/v3.3.1/promtail-linux-amd64.zip
+echo "Verifying Promtail download"
+if [[ "$(sha256sum < promtail-linux-amd64.zip)" != "5eb6332cb1a23c55a4151fe59f10f4390f4e7368fe80d881e42f585c6a2503e4" ]]; then
+	echo "Promtail failed sha256sum check"
+	exit 1
+fi
 echo "Extracting Promtail"
 unzip promtail-linux-amd64.zip
 echo "Setting up Promtail executable & symlink"
@@ -604,7 +618,7 @@ sudo systemctl start node-exporter.service
 
 echo "Waiting for node exporter to start"
 node_exporter_attempts=0
-while ! curl -s "http://localhost:9100/metrics" >/dev/null; do
+while ! curl -sf "http://localhost:9100/metrics" >/dev/null; do
 	((node_exporter_attempts++)) || true
 	if [ "$node_exporter_attempts" -gt 10 ]; then
 		echo "Failed to start node exporter service"
