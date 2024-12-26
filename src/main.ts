@@ -18,7 +18,7 @@ function printHelp(stream: Writable): void {
 	stream.write('\n')
 	stream.write('Logging\n')
 	stream.write('  --log-level <level>            Log level                                 LOG_LEVEL              info\n')
-	stream.write('  --log-foramt <format>          Log format, JSON or PRETTY                LOG_FORMAT             PRETTY\n')
+	stream.write('  --log-format <format>          Log format, JSON or PRETTY                LOG_FORMAT             PRETTY\n')
 	stream.write('  --[no-]log-pretty-sync         Force synchronous (slower) logging        LOG_PRETTY_SYNC        false\n')
 	stream.write('  --[no-]log-pretty-color        Colorize log output                       LOG_PRETTY_COLOR       true\n')
 	stream.write('  --[no-]log-pretty-single-line  Single line log output                    LOG_PRETTY_SINGLE_LINE false\n')
@@ -35,10 +35,10 @@ function printVersion(stream: Writable): void {
 let exitAfterDrain = false
 async function main(argv: string[], env: EnvironmentVariables): Promise<number> {
 	let logLevel = env.LOG_LEVEL || 'info'
-	let logFormat = env.LOG_FORMAT || 'PRETTY'
-	let logPrettySyncOpt = env.LOG_PRETTY_SYNC === 'false'
-	let logPrettyColorOpt = env.LOG_PRETTY_COLOR === 'true'
-	let logPrettySingleLine = env.LOG_PRETTY_SINGLE_LINE === 'true'
+	let logFormatOpt = env.LOG_FORMAT || 'PRETTY'
+	let logPrettySyncOpt: string | boolean = env.LOG_PRETTY_SYNC || 'false'
+	let logPrettyColorOpt: string | boolean = env.LOG_PRETTY_COLOR || 'true'
+	let logPrettySingleLine: string | boolean = env.LOG_PRETTY_SINGLE_LINE || 'true'
 	let cmd: undefined | string
 
 	let parsedArgs = false
@@ -63,7 +63,7 @@ async function main(argv: string[], env: EnvironmentVariables): Promise<number> 
 				logLevel = argv[++argi] || logLevel
 				break
 			case '--log-format':
-				logFormat = argv[++argi] || logFormat
+				logFormatOpt = argv[++argi] || logFormatOpt
 				break
 			case '--log-pretty-sync':
 				logPrettySyncOpt = true
@@ -111,7 +111,7 @@ async function main(argv: string[], env: EnvironmentVariables): Promise<number> 
 	}
 
 	let logger: Logger
-	switch (logFormat.trim().toLowerCase()) {
+	switch (logFormatOpt.trim().toLowerCase()) {
 		case 'json':
 			logger = pino()
 			break;
@@ -125,7 +125,7 @@ async function main(argv: string[], env: EnvironmentVariables): Promise<number> 
 		default:
 			printHelp(stderr)
 			stderr.write('\n')
-			stderr.write(`Unknown log format: ${logFormat}\n`)
+			stderr.write(`Unknown log format: ${logFormatOpt}\n`)
 			return 1
 	}
 	logger.level = logLevel
@@ -238,6 +238,6 @@ if (drainStdout || drainStderr) {
 }
 
 if (exitAfterDrain) {
-	process.exit(process.exitCode)
+	process.exit()
 }
 

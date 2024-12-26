@@ -1,6 +1,7 @@
 
 export type EnvironmentVariables = {
 	TZ?: string
+
 	LOG_LEVEL?: string
 	LOG_FORMAT?: string
 	LOG_PRETTY_SYNC?: string
