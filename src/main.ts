@@ -38,7 +38,7 @@ async function main(argv: string[], env: EnvironmentVariables): Promise<number> 
 	let logFormatOpt = env.LOG_FORMAT || 'PRETTY'
 	let logPrettySyncOpt: string | boolean = env.LOG_PRETTY_SYNC || 'false'
 	let logPrettyColorOpt: string | boolean = env.LOG_PRETTY_COLOR || 'true'
-	let logPrettySingleLine: string | boolean = env.LOG_PRETTY_SINGLE_LINE || 'true'
+	let logPrettySingleLineOpt: string | boolean = env.LOG_PRETTY_SINGLE_LINE || 'true'
 	let cmd: undefined | string
 
 	let parsedArgs = false
@@ -78,7 +78,7 @@ async function main(argv: string[], env: EnvironmentVariables): Promise<number> 
 				logPrettyColorOpt = false
 				break
 			case '--log-pretty-single-line':
-				logPrettySingleLine = true
+				logPrettySingleLineOpt = true
 				break
 			default:
 				if (argv[argi].startsWith('-')) {
@@ -115,13 +115,21 @@ async function main(argv: string[], env: EnvironmentVariables): Promise<number> 
 		case 'json':
 			logger = pino()
 			break;
-		case 'pretty':
+		case 'pretty': {
+			const logPrettySingleLine = boolOpt(logPrettySingleLineOpt)
+			if (logPrettySingleLine === undefined) {
+				printHelp(stderr)
+				stderr.write('\n')
+				stderr.write(`Invalid value for --log-single-line: ${logPrettySingleLineOpt}\n`)
+				return 1
+			}
 			logger = pino(prettyFactory({
 				sync: logPrettySync,
 				colorize: logPrettyColor,
 				singleLine: logPrettySingleLine,
 			}))
 			break;
+		}
 		default:
 			printHelp(stderr)
 			stderr.write('\n')

@@ -503,7 +503,7 @@ User=enkrypt-api
 EnvironmentFile=/etc/enkrypt-api/node.env
 EnvironmentFile=/etc/enkrypt-api/app.env
 WorkingDirectory=/opt/enkrypt-api/app/current
-ExecStart=/opt/enkrypt-api/.nvm/nvm-exec node /opt/enkrypt-api/app/current/build/main.js serve --check-config
+ExecStart=/opt/enkrypt-api/.nvm/nvm-exec node /opt/enkrypt-api/app/current/build/main.js serve --config-check
 
 ProtectSystem=strict
 ProtectHome=yes
@@ -530,7 +530,7 @@ User=enkrypt-api
 EnvironmentFile=/etc/enkrypt-api/node.env
 EnvironmentFile=/etc/enkrypt-api/app.env
 WorkingDirectory=/opt/enkrypt-api/app/next
-ExecStart=/opt/enkrypt-api/.nvm/nvm-exec node /opt/enkrypt-api/app/next/build/main.js serve --check-config
+ExecStart=/opt/enkrypt-api/.nvm/nvm-exec node /opt/enkrypt-api/app/next/build/main.js serve --config-check
 
 ProtectSystem=strict
 ProtectHome=yes

@@ -64,7 +64,7 @@ function printHelp(stream: Writable): void {
 	stream.write('  --bind-port <port>             Port to listen on               BIND_PORT     3000\n')
 	stream.write('  --bind-addr <addr>             Address to listen on            BIND_ADDR     127.0.0.1\n')
 	stream.write('  --[no-]debug                   Enable debug logging of errors  DEBUG         false\n')
-	stream.write('  --[no-]check-config            Check the configuration                       false\n')
+	stream.write('  --[no-]config-check            Check the configuration                       false\n')
 	stream.write('Environment Variables\n')
 	stream.write('  WHITELIST_ORIGINS                JSON array of regex for whitelisted CORS origns  []\n')
 	stream.write('  STORAGE_DRIVER                   fs or s3                                         fs\n')
@@ -81,7 +81,7 @@ export default async function serveMain(globalOpts: GlobalOptions): Promise<numb
 	let bindAddr = env.BIND_ADDR || '127.0.0.1'
 	let debugOpt = env.DEBUG || 'false'
 	let originsOpt = env.WHITELIST_ORIGINS || '[]'
-	let checkConfigOpt = 'false'
+	let configCheckOpt = 'false'
 	const storageDriver = env.STORAGE_DRIVER || 'fs'
 	const storageRootDirpath = env.FILESYSTEM_STORAGE_ROOT_DIRPATH || 'storage'
 	const s3BucketName = env.S3_STORAGE_BUCKET_NAME
@@ -114,11 +114,11 @@ export default async function serveMain(globalOpts: GlobalOptions): Promise<numb
 			case '--no-debug':
 				debugOpt = 'false'
 				break
-			case '--check-config':
-				checkConfigOpt = 'true'
+			case '--config-check':
+				configCheckOpt = 'true'
 				break
-			case '--no-check-config':
-				checkConfigOpt = 'false'
+			case '--no-config-check':
+				configCheckOpt = 'false'
 				break
 			default:
 				printHelp(stderr)
@@ -145,11 +145,11 @@ export default async function serveMain(globalOpts: GlobalOptions): Promise<numb
 		return 1
 	}
 
-	const checkConfig = boolOpt(checkConfigOpt)
-	if (checkConfig === undefined) {
+	const configCheck = boolOpt(configCheckOpt)
+	if (configCheck === undefined) {
 		printHelp(stderr)
 		stderr.write('\n')
-		stderr.write(`Invalid check-config: ${checkConfigOpt}\n`)
+		stderr.write(`Invalid check-config: ${configCheckOpt}\n`)
 		return 1
 	}
 
@@ -207,7 +207,7 @@ export default async function serveMain(globalOpts: GlobalOptions): Promise<numb
 		bindPort,
 		origins,
 		debug,
-		checkConfig,
+		configCheck,
 		storageConfig,
 	})
 
@@ -237,16 +237,16 @@ type CommandOptions = {
 	bindAddr: string,
 	bindPort: number,
 	debug: boolean,
-	checkConfig: boolean,
+	configCheck: boolean,
 	origins: RegExp[],
 	storageConfig: StorageConfig,
 }
 
 async function cmd(cmdOpts: CommandOptions): Promise<void> {
-	const { checkConfig, } = cmdOpts
+	const { configCheck, } = cmdOpts
 	await using disposer = new Disposer()
 	const cmdConfig = await setup(cmdOpts, disposer)
-	if (checkConfig) {
+	if (configCheck) {
 		// Noop
 		return
 	}

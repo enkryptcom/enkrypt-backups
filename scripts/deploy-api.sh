@@ -91,11 +91,11 @@ if [[ -z "${ssh_target}" ]]; then
   exit 1
 fi
 
-echo "SSH options:  ${ssh_options}"
-echo "SCP options:  ${scp_options}"
-echo "NVM install:  ${nvm_install_opt}"
-echo "Build:        ${build_opt}"
-echo "SSH target:   ${ssh_target}"
+echo "SSH options:         ${ssh_options}"
+echo "SCP options:         ${scp_options}"
+echo "Remote NVM install:  ${nvm_install_opt}"
+echo "Remote Build:        ${build_opt}"
+echo "SSH target:          ${ssh_target}"
 
 # Verify that we're deploying to an actual enkrypt-api server
 echo "Verifying remote server type..."
