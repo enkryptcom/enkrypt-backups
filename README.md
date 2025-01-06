@@ -91,7 +91,7 @@ The Enkrypt API is simple and there are many ways to deploy it. Here's an exampl
   - Instance type: t2.micro/t3.micro or higher
   - Subnet: ideally private subnet behind a NAT gateway
   - Security Group
-    - HTTP/HTTPS ipv4/ipv6 egress to anywhere (Temporary, for updating the server, installing NodeJS and npm packages)
+    - HTTP/HTTPS ipv4/ipv6 egress to anywhere (Temporary, for updating the server, installing apt packages, NodeJS and npm packages)
     - SSH ingress from bastion host if on private subnet, otherwise on a public subnet from your ip address if on public subnet
   - Storage: 8GiB gpt3 root volume
 
@@ -115,7 +115,7 @@ The Enkrypt API is simple and there are many ways to deploy it. Here's an exampl
   - Instance type: t2.micro/t3.micro or higher
   - Subnet: public
   - Security Group
-    - HTTP/HTTPS ipv4/ipv6 egress to anywhere (Temporary, for updating the server, installing NodeJS and npm packages)
+    - HTTP/HTTPS ipv4/ipv6 egress to anywhere (Temporary, for updating the server and installing apt packages)
     - SSH ingress from bastion host or from your ip
   - Storage: 8GiB gpt3 root volume
 
