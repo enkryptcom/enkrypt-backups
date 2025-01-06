@@ -25,6 +25,7 @@ import { FilesystemStorage } from '../storage/filesystem.js';
 import { S3 } from '@aws-sdk/client-s3';
 import { S3Storage } from '../storage/s3.js';
 import { sleep } from '../utils/helpers.js';
+import { fmtDurationPrecise } from '../utils/time.js';
 
 const SOFT_REQ_TIMEOUT_DURATION = 2_500
 const SOFT_REQ_TIMEOUT_CHECK_INTERVAL = 5_000
@@ -481,45 +482,65 @@ export function createHttpAppRouter(opts: {
 	function onResClose(this: Response) {
 		const now = Date.now()
 		const duration = now - this.req.startedAt
+		const routePath = typeof this.req.route?.path === 'string' ? this.req.route?.path : undefined
 		this.req.ctx.logger.info({
 			res: {
 				duration,
+				routePath,
 				statusCode: this.statusCode,
 				statusMessage: this.statusMessage,
 				headers: LOG_RES_HEADERS ? this.getHeaders() : undefined,
 			},
-		}, `HTTP response closed  ${duration}ms   ${this.statusCode} ${this.statusMessage}`)
+		}, `HTTP response closed`
+		+ `  ${fmtDurationPrecise(duration)}`
+		+ `  ${this.statusCode}`
+		+ `  ${this.statusMessage}`
+		+ `  ${routePath ?? `(No route ${this.req.path}`}`
+		)
 		cleanupRes(this)
 	}
 
 	function onResFinish(this: Response) {
 		const now = Date.now()
 		const duration = now - this.req.startedAt
+		const routePath = typeof this.req.route?.path === 'string' ? this.req.route?.path : undefined
 		this.req.ctx.logger.info({
 			res: {
 				duration,
+				routePath,
 				status: this.status,
 				statusCode: this.statusCode,
 				statusMessage: this.statusMessage,
 				headers: LOG_RES_HEADERS ? this.getHeaders() : undefined,
 			},
-		}, `HTTP response finished  ${duration}ms   ${this.statusCode} ${this.statusMessage}`)
+		}, `HTTP response finished`
+		+ `  ${fmtDurationPrecise(duration)}`
+		+ `  ${this.statusCode}`
+		+ `  ${this.statusMessage}`
+		+ `  ${routePath ?? `(No route ${this.req.path})`}`
+		)
 		cleanupRes(this)
 	}
 
 	function onResError(this: Response, err: Error) {
 		const now = Date.now()
 		const duration = now - this.req.startedAt
+		const routePath = typeof this.req.route?.path === 'string' ? this.req.route?.path : undefined
 		this.req.ctx.logger.info({
 			err,
 			res: {
 				duration,
+				routePath,
 				status: this.status,
 				statusCode: this.statusCode,
 				statusMessage: this.statusMessage,
 				headers: LOG_RES_HEADERS ? this.getHeaders() : undefined,
 			},
-		}, `HTTP response error  ${duration}ms   ${this.statusCode} ${this.statusMessage}`)
+		}, `HTTP response error`
+		+ `  ${fmtDurationPrecise(duration)}`
+		+ `  ${this.statusCode}`
+		+ `  ${this.statusMessage}`
+		+ `  ${routePath ?? `(No route ${this.req.path}`}`)
 	}
 
 	function cleanupRes(res: Response) {
