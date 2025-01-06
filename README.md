@@ -79,11 +79,11 @@ The Enkrypt API is simple and there are many ways to deploy it. Here's an exampl
 
 3. Setup IAM permissions
   - Create an IAM Policy specified in [AWS IAM permissions](#aws-iam-permissions).
-    - Name the policy something like "EnkryptApi<Stage>" where "Stage" is a deployment stage like "Prod" "Dev", or "Test"
+    - Name the policy something like "EnkryptApi(Stage)" where "Stage" is a deployment stage like "Prod" "Dev", or "Test"
     - Remember to update the policy JSON with your actual backup name
-  - Create an IAM Role with name "EnkryptApi<Stage>" and with the IAM Policy for the API server to assume
+  - Create an IAM Role with name "EnkryptApi(Stage)" and with the IAM Policy for the API server to assume
     - Secify Trusted Entity Type "AWS service" and the EC2 use case "Allows EC2 instances to call AWS services on your behalf."
-    - Attach the policy "EnkryptApi<Stage>"
+    - Attach the policy "EnkryptApi(Stage)"
 
 4. Create a new AWS EC2 instance for the Enkrypt API using the AWS GUI
   - Name: "enkrypt-api-<deployment stage>-api" (eg "enkrypt-api-prod-api")
@@ -131,26 +131,26 @@ The Enkrypt API is simple and there are many ways to deploy it. Here's an exampl
 8. Finalise security groups
   - Remove any previous rules allowing any HTTP/S egress from the API server
   - Remove any previous rules allowing any HTTP/S egress from the loadbalancer server
-  - If not already exists, create an empty Security Group for the Enkrypt API named "enkrypt-api-<stage>-api" (eg "enkrypt-api-prod-api")
-  - If not already exists, create an empty Security Group for the Enkrypt loadbalancer named "enkrypt-api-<stage>-loadbalancer" (eg "enkrypt-api-prod-loadbalancer")
-  - Setup "enkrypt-api-<stage>-api" Security Group rules
+  - If not already exists, create an empty Security Group for the Enkrypt API named "enkrypt-api-(stage)-api" (eg "enkrypt-api-prod-api")
+  - If not already exists, create an empty Security Group for the Enkrypt loadbalancer named "enkrypt-api-(stage)-loadbalancer" (eg "enkrypt-api-prod-loadbalancer")
+  - Setup "enkrypt-api-(stage)-api" Security Group rules
     - Setup ingress rules
-      - TCP from the "enkrypt-api-<stage>-loadbalancer" Security Group on port 8080
+      - TCP from the "enkrypt-api-(stage)-loadbalancer" Security Group on port 8080
       - TCP from the from a Prometheus server on port 9100 (if applicable)
     - Setup egress rules
       - TCP to S3
         - If using the VPC endpoint from step 1. then allow HTTPS (port 443) egress to the VPC Endpoint
         - If not using a VPC endpoint then enable all HTTPS (port 443) ipv4/ipv6 egress
       - TCP to Loki on port 3100 (or whichever port your Loki is listening on) (if applicable)
-  - Setup "enkrypt-api-<stage>-loadbalancer" Security Group rules
+  - Setup "enkrypt-api-(stage)-loadbalancer" Security Group rules
     - Setup ingress rules
       - TPC on HTTPS (port 443) and HTTP (port 80) from anywhere ipv4/ipv6
       - TCP from the from a Prometheus server on port 9100 (if applicable)
     - Setup egress rules
-      - TCP to the Api server on port 8080 to the `enkrypt-api-<stage>-api` Security Group
+      - TCP to the Api server on port 8080 to the `enkrypt-api-(stage)-api` Security Group
       - TCP to Loki on port 3100 (or whichever port your Loki is listening on) (if applicable)
-  - Assign the "enkrypt-api-<stage>-api" to the API server "enkrypt-api-<stage>-api"
-  - Assign the "enkrypt-api-<stage>-loadbalancer" to the loadbalancer server "enkrypt-api-<stage>-loadbalancer"
+  - Assign the "enkrypt-api-(stage)-api" to the API server "enkrypt-api-(stage)-api"
+  - Assign the "enkrypt-api-(stage)-loadbalancer" to the loadbalancer server "enkrypt-api-(stage)-loadbalancer"
 
 9. Finalise setup (if applicable)
   - Create an Elastic IP and assign it to the loadbalancer server
