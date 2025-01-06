@@ -225,7 +225,7 @@ echo "Downloading Prometheus Node Exporter"
 # https://github.com/prometheus/node_exporter/releases
 curl -fLJO https://github.com/prometheus/node_exporter/releases/download/v1.8.2/node_exporter-1.8.2.linux-amd64.tar.gz
 echo "Verifying Prometheus Node Exporter download"
-if [[ "$(sha256sum < node_exporter-1.8.2.linux-amd64.tar.gz)" != "6809dd0b3ec45fd6e992c19071d6b5253aed3ead7bf0686885a51d85c6643c66" ]]; then
+if [[ ! "$(echo "6809dd0b3ec45fd6e992c19071d6b5253aed3ead7bf0686885a51d85c6643c66 node_exporter-1.8.2.linux-amd64.tar.gz" | sha256sum -c)" ]]; then
 	echo "Prometheus Node Exporter failed sha256sum check"
 	exit 1
 fi
@@ -245,7 +245,7 @@ echo "Downloading Promtail"
 # https://github.com/grafana/loki/releases
 curl -fLJO https://github.com/grafana/loki/releases/download/v3.3.1/promtail-linux-amd64.zip
 echo "Verifying Promtail download"
-if [[ "$(sha256sum < promtail-linux-amd64.zip)" != "5eb6332cb1a23c55a4151fe59f10f4390f4e7368fe80d881e42f585c6a2503e4" ]]; then
+if [[ ! "$(echo "5eb6332cb1a23c55a4151fe59f10f4390f4e7368fe80d881e42f585c6a2503e4 promtail-linux-amd64.zip" sha256sum -c)" ]]; then
 	echo "Promtail failed sha256sum check"
 	exit 1
 fi
@@ -308,7 +308,7 @@ echo "Downloading nvm install script"
 curl -fLo nvm-install.sh https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh
 echo "Verifying nvm install script"
 # Hash obtained from "curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | sha256sum"
-if [[ "$(sha256sum < nvm-install.sh)" != "abdb525ee9f5b48b34d8ed9fc67c6013fb0f659712e401ecd88ab989b3af8f53" ]]; then
+if [[ ! "$(echo "abdb525ee9f5b48b34d8ed9fc67c6013fb0f659712e401ecd88ab989b3af8f53 nvm-install.sh" | sha256sum -c)" ]]; then
 	echo "nvm-install.sh failed sha256sum check"
 	exit 1
 fi

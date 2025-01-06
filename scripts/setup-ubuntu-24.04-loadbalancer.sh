@@ -170,7 +170,7 @@ echo "Downloading Prometheus Node Exporter"
 # https://github.com/prometheus/node_exporter/releases
 curl -fLJO https://github.com/prometheus/node_exporter/releases/download/v1.8.2/node_exporter-1.8.2.linux-amd64.tar.gz
 echo "Verifying Prometheus Node Exporter download"
-if [[ "$(sha256sum < node_exporter-1.8.2.linux-amd64.tar.gz)" != "6809dd0b3ec45fd6e992c19071d6b5253aed3ead7bf0686885a51d85c6643c66" ]]; then
+if [[ ! "$(echo "6809dd0b3ec45fd6e992c19071d6b5253aed3ead7bf0686885a51d85c6643c66 node_exporter-1.8.2.linux-amd64.tar.gz" | sha256sum -c)" ]]; then
 	echo "Prometheus Node Exporter failed sha256sum check"
 	exit 1
 fi
@@ -190,7 +190,7 @@ echo "Downloading Promtail"
 # https://github.com/grafana/loki/releases
 curl -fLJO https://github.com/grafana/loki/releases/download/v3.3.1/promtail-linux-amd64.zip
 echo "Verifying Promtail download"
-if [[ "$(sha256sum < promtail-linux-amd64.zip)" != "5eb6332cb1a23c55a4151fe59f10f4390f4e7368fe80d881e42f585c6a2503e4" ]]; then
+if [[ ! "$(echo "5eb6332cb1a23c55a4151fe59f10f4390f4e7368fe80d881e42f585c6a2503e4 promtail-linux-amd64.zip" sha256sum -c)" ]]; then
 	echo "Promtail failed sha256sum check"
 	exit 1
 fi
@@ -675,7 +675,7 @@ chmod 440 /home/ubuntu/server-type-identifier
 
 echo "Setting up readme"
 
-README_TEXT=$(cat <<'EOF'
+README_TEXT=$(cat <<'README'
 # Enkrypt API Load Balancer (HAProxy) server
 
 ## This server contains
@@ -766,6 +766,7 @@ sudo certbot certonly --standalone -d "yourdomain_change_me" \
       | sudo tee /etc/haproxy/certs/yourdomain_change_me.pem >/dev/null \
     && systemctl reload haproxy" \
   --post-hook "systemctl start haproxy" \
+```
 
 ## Getting started
 
@@ -778,7 +779,7 @@ These steps can be executed as part of a userdata script when launching from a t
 2. Setup HAProxy configuration
   [ ] Fill in the backend servers in /etc/haproxy/haproxy.cfg
   [ ] Setup the frontend and backend configurations in /etc/haproxy/haproxy.cfg, include tls/ssl certs, if needed
-	[ ] Update HAProxy systemd config and enable all the security flags (find unit file location using systemd cat haproxy)
+  [ ] Update HAProxy systemd config and enable all the security flags (find unit file location using systemd cat haproxy)
 3. Setup and attach a Security Group to this Load Balancer Server
   [ ] Whitelist egress to the Loki Security Group on port 3100 (make sure to whitelist ingress in the Loki Security Group if not already)
   [ ] Whitelist ingress from the Prometheus Security Group to Node Exporter on port 9100 (make sure to whitelist egress in the Prometheus Security Group if not already)
@@ -808,8 +809,7 @@ These steps can be executed as part of a userdata script when launching from a t
 10. Restart the server
   [ ] `sudo reboot`
 
-```
-EOF
+README
 )
 
 # create the readme
