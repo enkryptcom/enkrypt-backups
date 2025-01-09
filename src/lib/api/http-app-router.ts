@@ -12,9 +12,9 @@ import { randomErrorsMiddleware } from '../../middleware/random-errors.js';
 import type { ApiHttpConfig } from '../../env.js';
 import type { Validators } from './validation.js';
 import createGetHandler from '../../api/get.js';
-import createGetHealthHandler from '../../api/health.js';
-import createGetSchemaHandler from '../../api/schema.js';
-import createGetVersionHandler from '../../api/version.js';
+import createGetHealthHandler from '../../api/get-health.js';
+import createGetSchemaHandler from '../../api/get-schema.js';
+import createGetVersionHandler from '../../api/get-version.js';
 import createGetUserBackupsHandler from '../../api/backups/get.js';
 import createPostUserBackupHandler from '../../api/backups/post-backup.js';
 

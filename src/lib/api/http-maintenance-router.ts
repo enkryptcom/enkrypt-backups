@@ -7,8 +7,8 @@ import { initMiddleware } from '../../middleware/init.js';
 import { corsMiddleware } from '../../middleware/cors.js';
 import { errorHandlerMiddleware } from '../../middleware/error.js';
 import type { ApiHttpConfig } from '../../env.js';
-import createGetHealthHandler from '../../api/health.js';
-import createGetVersionHandler from '../../api/version.js';
+import createGetHealthHandler from '../../api/get-health.js';
+import createGetVersionHandler from '../../api/get-version.js';
 
 export function createHttpMaintenanceRouter(opts: {
 	disposer: Disposer,
