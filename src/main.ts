@@ -24,7 +24,7 @@ function printHelp(stream: Writable): void {
 	stream.write('  --[no-]log-pretty-single-line  Single line log output                    LOG_PRETTY_SINGLE_LINE false\n')
 	stream.write('\n')
 	stream.write('Commands\n')
-	stream.write('  serve     Start the API server\n')
+	stream.write('  api       Start the API server\n')
 	stream.write('  client    Start an API client (used for testing)\n')
 }
 
@@ -157,8 +157,8 @@ async function main(argv: string[], env: EnvironmentVariables): Promise<number> 
 	let code: number
 	try {
 		switch (cmd) {
-			case 'serve': {
-				code = await (await import('./cli/serve.js')).default(globalOpts)
+			case 'api': {
+				code = await (await import('./cli/api.js')).default(globalOpts)
 				break;
 			}
 			case 'client': {

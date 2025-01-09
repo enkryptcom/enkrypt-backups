@@ -4,42 +4,54 @@ info:
   title: Enkrypt Backend API
   version: 1.0.0
 paths:
+  /get:
+    get:
+      operationId: GetRoot
+      responses:
+        200:
+          $ref: '#/components/responses/GetRootSuccess'
+
   /version:
     get:
+      operationId: GetVersion
       responses:
         200:
           $ref: '#/components/responses/GetVersionSuccess'
 
   /health:
     get:
+      operationId: GetHealth
       responses:
         200:
           $ref: '#/components/responses/GetHealthSuccess'
 
   /schema:
     get:
+      operationId: GetSchema
       responses:
         200:
           $ref: '#/components/responses/GetSchemaSuccess'
 
   /backups/{publicKey}:
     get:
+      operationId: GetUserBackups
       parameters:
         - $ref: '#/components/parameters/PublicKey'
       responses:
         200:
-          $ref: '#/components/responses/GetBackupsSuccess'
+          $ref: '#/components/responses/GetUserBackupsSuccess'
 
   /backups/{publicKey}/{userId}:
     post:
+      operationId: PostUserBackup
       parameters:
         - $ref: '#/components/parameters/PublicKey'
         - $ref: '#/components/parameters/UserId'
       requestBody:
-        $ref: '#/components/requestBodies/PostBackup'
+        $ref: '#/components/requestBodies/PostUserBackup'
       responses:
         200:
-          $ref: '#/components/responses/PostBackupSuccess'
+          $ref: '#/components/responses/PostUserBackupSuccess'
 
 components:
   parameters:
@@ -58,13 +70,19 @@ components:
         $ref: '#/components/schemas/UserId'
 
   requestBodies:
-    PostBackup:
+    PostUserBackup:
       description: hi!
       content:
         application/json:
-          $ref: '#/components/schemas/PostBackupRequest'
+          $ref: '#/components/schemas/PostUserBackupRequest'
 
   responses:
+    GetRootSuccess:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/GetRootResponse'
+
     GetVersionSuccess:
       content:
         application/json:
@@ -83,17 +101,17 @@ components:
           schema:
             $ref: '#/components/schemas/GetSchemaResponse'
 
-    GetBackupsSuccess:
+    GetUserBackupsSuccess:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/GetBackupsResponse'
+            $ref: '#/components/schemas/GetUserBackupsResponse'
 
-    PostBackupSuccess:
+    PostUserBackupSuccess:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/PostBackupResponse'
+            $ref: '#/components/schemas/PostUserBackupResponse'
 
   schemas:
     ByteString:
@@ -116,6 +134,14 @@ components:
     UserId:
       $ref: '#/components/schemas/UUID'
 
+    GetRootResponse:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+
     GetHealthResponse:
       type: object
       required:
@@ -135,7 +161,7 @@ components:
     GetSchemaResponse:
       type: string
 
-    PostBackupRequest:
+    PostUserBackupRequest:
       type: object
       required:
         - signature
@@ -146,7 +172,7 @@ components:
         payload:
           $ref: '#/components/schemas/ByteString'
 
-    PostBackupResponse:
+    PostUserBackupResponse:
       type: object
       required:
         - message
@@ -154,7 +180,7 @@ components:
         message:
           type: string
 
-    GetBackupsResponse:
+    GetUserBackupsResponse:
       type: object
       required:
         - backups
@@ -162,9 +188,9 @@ components:
         backups:
           type: array
           items:
-            $ref: '#/components/schemas/GetBackupsResponseItem'
+            $ref: '#/components/schemas/Backup'
 
-    GetBackupsResponseItem:
+    Backup:
       type: object
       required:
         - updatedAt

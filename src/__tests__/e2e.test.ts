@@ -1,5 +1,4 @@
 import { describe, it } from "node:test";
-import { setup, StorageDriver } from "../cli/serve.js";
 import { pino } from "pino";
 import { Disposer } from "../utils/disposer.js";
 import http from 'node:http'
@@ -15,6 +14,8 @@ import pinoPretty from 'pino-pretty'
 import { join } from "node:path";
 import { gunzip, } from 'node:zlib'
 import type { Backup } from "../storage/interface.js";
+import { setup } from "../lib/api/setup.js";
+import { getApiClusterConfig, getApiHttpConfig, getStorageConfig, } from "../env.js";
 
 
 describe('e2e', { timeout: 10_000, }, function() {
@@ -22,23 +23,31 @@ describe('e2e', { timeout: 10_000, }, function() {
 	it('should work', async function() {
 		const logger = pino(pinoPretty({ singleLine: true, colorize: true, sync: true, }))
 		// You can turn on logging by changing the level to 'trace' to debug the test
-		logger.level = 'silent'
-		// logger.level = 'trace'
+		// logger.level = 'silent'
+		logger.level = 'trace'
 		await using disposer = new Disposer()
-		const config = await setup({
-			logger,
-			debug: false,
-			configCheck: false,
-			bindAddr: '127.0.0.1',
-			bindPort: 3002,
-			origins: [],
-			storageConfig: {
-				driver: StorageDriver.FS,
-				rootDirpath: 'storage.tests',
-			}
-		}, disposer)
 
-		const { httpServer, httpAppRouter, bindPort, bindAddr, } = config
+		const httpConfig = getApiHttpConfig({
+			API_HTTP_HOST: '127.0.0.1',
+			API_HTTP_PORT: '3002',
+		})
+		const clusterConfig = getApiClusterConfig({
+			API_CLUSTER_STANDALONE: 'true',
+		})
+		const storageConfig = getStorageConfig({
+			STORAGE_DRIVER: 'FS',
+			STORAGE_FILESYSTEM_ROOT_DIRPATH: 'storage.tests',
+		})
+
+		const config = await setup(disposer, {
+			logger,
+			configCheck: false,
+			httpConfig,
+			clusterConfig,
+			storageConfig,
+		})
+
+		const { httpServer, httpAppRouter, httpConfig: { host, port, }, } = config
 
 		httpServer.on('request', httpAppRouter)
 
@@ -58,7 +67,7 @@ describe('e2e', { timeout: 10_000, }, function() {
 			}
 			httpServer.on('listening', onListening)
 			httpServer.on('error', onError)
-			httpServer.listen(bindPort, bindAddr)
+			httpServer.listen(port, host)
 		})
 
 		disposer.defer(async function() {
@@ -86,8 +95,8 @@ describe('e2e', { timeout: 10_000, }, function() {
 		type HealthResult = components['schemas']['GetHealthResponse']
 		const healthResponse = await new Promise<HealthResult>(function(res, rej) {
 			const request = http.request({
-				host: bindAddr,
-				port: bindPort,
+				host,
+				port,
 				path: '/health',
 				method: 'GET',
 				signal: AbortSignal.timeout(5_000),
@@ -135,8 +144,8 @@ describe('e2e', { timeout: 10_000, }, function() {
 		type VersionResult = components['schemas']['GetVersionResponse']
 		const versionResponse = await new Promise<VersionResult>(function(res, rej) {
 			const request = http.request({
-				host: bindAddr,
-				port: bindPort,
+				host,
+				port,
 				path: '/version',
 				method: 'GET',
 				signal: AbortSignal.timeout(5_000),
@@ -185,8 +194,8 @@ describe('e2e', { timeout: 10_000, }, function() {
 		type SchemaResponse = components['schemas']['GetSchemaResponse']
 		const schemaResponse = await new Promise<OpenAPIV3_1.Document>(function(res, rej) {
 			const request = http.request({
-				host: bindAddr,
-				port: bindPort,
+				host,
+				port,
 				path: '/schema',
 				method: 'GET',
 				signal: AbortSignal.timeout(5_000),
@@ -210,7 +219,7 @@ describe('e2e', { timeout: 10_000, }, function() {
 					if (errRef) rej(errRef.err)
 					else {
 						try {
-							const yaml = Buffer.concat(chunks).toString('utf8')
+							const yaml = Buffer.concat(chunks).toString('utf8') as SchemaResponse
 							const data = parseYaml(yaml)
 							res(data)
 						} catch (err) {
@@ -244,16 +253,16 @@ describe('e2e', { timeout: 10_000, }, function() {
 		const ecsig = ecsign(messageHash, privkey)
 		const signature = toRpcSig(ecsig.v, ecsig.r, ecsig.s)
 
-		type PostBackupResult = components['schemas']['PostBackupResponse']
+		type PostBackupResult = components['schemas']['PostUserBackupResponse']
 		const postBackupResult = await new Promise<PostBackupResult>(function(res, rej) {
-			const body: components['schemas']['PostBackupRequest'] = {
+			const body: components['schemas']['PostUserBackupRequest'] = {
 				payload: bufferToByteString(mockEncryptedBackup),
 				signature: parseByteString(signature),
 			}
 
 			const request = http.request({
-				host: bindAddr,
-				port: bindPort,
+				host,
+				port,
 				path: `/backups/${pubkey}/${userId}`,
 				method: 'POST',
 				signal: AbortSignal.timeout(5_000),
@@ -333,11 +342,11 @@ describe('e2e', { timeout: 10_000, }, function() {
 		strictEqual(mockBackupInFilesystem.payload, bufferToByteString(mockEncryptedBackup), 'Payload mismatch')
 
 		// Check we can retrieve it using the API
-		type GetBackupsResult = components['schemas']['GetBackupsResponse']
+		type GetBackupsResult = components['schemas']['GetUserBackupsResponse']
 		const getBackupsResult = await new Promise<GetBackupsResult>(function(res, rej) {
 			const request = http.request({
-				host: bindAddr,
-				port: bindPort,
+				host,
+				port,
 				path: `/backups/${pubkey}`,
 				method: 'GET',
 				signal: AbortSignal.timeout(5_000),
@@ -387,6 +396,6 @@ describe('e2e', { timeout: 10_000, }, function() {
 				updatedAt: getBackupsResult.backups[0].updatedAt, // :)
 				payload: bufferToByteString(mockEncryptedBackup),
 			}]
-		} satisfies components['schemas']['GetBackupsResponse'])
+		} satisfies components['schemas']['GetUserBackupsResponse'])
 	})
 })

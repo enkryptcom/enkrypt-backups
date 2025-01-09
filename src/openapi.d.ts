@@ -4,6 +4,22 @@
  */
 
 export interface paths {
+    "/get": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetRoot"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/version": {
         parameters: {
             query?: never;
@@ -11,18 +27,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                200: components["responses"]["GetVersionSuccess"];
-            };
-        };
+        get: operations["GetVersion"];
         put?: never;
         post?: never;
         delete?: never;
@@ -38,18 +43,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                200: components["responses"]["GetHealthSuccess"];
-            };
-        };
+        get: operations["GetHealth"];
         put?: never;
         post?: never;
         delete?: never;
@@ -65,18 +59,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                200: components["responses"]["GetSchemaSuccess"];
-            };
-        };
+        get: operations["GetSchema"];
         put?: never;
         post?: never;
         delete?: never;
@@ -92,20 +75,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    publicKey: components["parameters"]["PublicKey"];
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                200: components["responses"]["GetBackupsSuccess"];
-            };
-        };
+        get: operations["GetUserBackups"];
         put?: never;
         post?: never;
         delete?: never;
@@ -123,21 +93,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    publicKey: components["parameters"]["PublicKey"];
-                    userId: components["parameters"]["UserId"];
-                };
-                cookie?: never;
-            };
-            requestBody?: components["requestBodies"]["PostBackup"];
-            responses: {
-                200: components["responses"]["PostBackupSuccess"];
-            };
-        };
+        post: operations["PostUserBackup"];
         delete?: never;
         options?: never;
         head?: never;
@@ -155,6 +111,9 @@ export interface components {
         UUID: string;
         PublicKey: components["schemas"]["Bytes64"];
         UserId: components["schemas"]["UUID"];
+        GetRootResponse: {
+            message: string;
+        };
         GetHealthResponse: {
             message: string;
         };
@@ -162,17 +121,17 @@ export interface components {
             version: string;
         };
         GetSchemaResponse: string;
-        PostBackupRequest: {
+        PostUserBackupRequest: {
             signature: components["schemas"]["ByteString"];
             payload: components["schemas"]["ByteString"];
         };
-        PostBackupResponse: {
+        PostUserBackupResponse: {
             message: string;
         };
-        GetBackupsResponse: {
-            backups: components["schemas"]["GetBackupsResponseItem"][];
+        GetUserBackupsResponse: {
+            backups: components["schemas"]["Backup"][];
         };
-        GetBackupsResponseItem: {
+        Backup: {
             /** Format: date-time */
             updatedAt: string;
             userId: string;
@@ -180,6 +139,14 @@ export interface components {
         };
     };
     responses: {
+        GetRootSuccess: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["GetRootResponse"];
+            };
+        };
         GetVersionSuccess: {
             headers: {
                 [name: string]: unknown;
@@ -204,20 +171,20 @@ export interface components {
                 "application/yaml": components["schemas"]["GetSchemaResponse"];
             };
         };
-        GetBackupsSuccess: {
+        GetUserBackupsSuccess: {
             headers: {
                 [name: string]: unknown;
             };
             content: {
-                "application/json": components["schemas"]["GetBackupsResponse"];
+                "application/json": components["schemas"]["GetUserBackupsResponse"];
             };
         };
-        PostBackupSuccess: {
+        PostUserBackupSuccess: {
             headers: {
                 [name: string]: unknown;
             };
             content: {
-                "application/json": components["schemas"]["PostBackupResponse"];
+                "application/json": components["schemas"]["PostUserBackupResponse"];
             };
         };
     };
@@ -227,9 +194,9 @@ export interface components {
     };
     requestBodies: {
         /** @description hi! */
-        PostBackup: {
+        PostUserBackup: {
             content: {
-                "application/json": components["schemas"]["PostBackupRequest"];
+                "application/json": components["schemas"]["PostUserBackupRequest"];
             };
         };
     };
@@ -237,4 +204,82 @@ export interface components {
     pathItems: never;
 }
 export type $defs = Record<string, never>;
-export type operations = Record<string, never>;
+export interface operations {
+    GetRoot: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["GetRootSuccess"];
+        };
+    };
+    GetVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["GetVersionSuccess"];
+        };
+    };
+    GetHealth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["GetHealthSuccess"];
+        };
+    };
+    GetSchema: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["GetSchemaSuccess"];
+        };
+    };
+    GetUserBackups: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                publicKey: components["parameters"]["PublicKey"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["GetUserBackupsSuccess"];
+        };
+    };
+    PostUserBackup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                publicKey: components["parameters"]["PublicKey"];
+                userId: components["parameters"]["UserId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: components["requestBodies"]["PostUserBackup"];
+        responses: {
+            200: components["responses"]["PostUserBackupSuccess"];
+        };
+    };
+}

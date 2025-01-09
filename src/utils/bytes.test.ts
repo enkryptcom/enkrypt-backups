@@ -1,8 +1,8 @@
 import { describe, it } from "node:test";
 import { strictEqual } from 'node:assert/strict'
-import { fmtBytes, parseBytes } from "./size.js";
+import { fmtBytes, parseBytes } from "./bytes.js";
 
-describe('size', function() {
+describe('bytes', function() {
 	describe('parseBytes', function() {
 		it('should work', function() {
 			strictEqual(parseBytes('0'), 0)

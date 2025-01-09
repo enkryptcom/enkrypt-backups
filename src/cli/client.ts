@@ -1,15 +1,12 @@
 import type { Writable } from "node:stream"
 import type { GlobalOptions } from "../types.js"
 import type { Logger } from "pino"
-import { request as httpRequest, } from 'node:http'
-import { request as httpsRequest, } from 'node:https'
 import { randomBytes, randomUUID } from "node:crypto"
 import { createInterface } from 'node:readline/promises'
 import { bufferToByteString, bytesToByteString, parseByteString } from "../utils/coersion.js"
 import { ecsign, hashPersonalMessage, privateToPublic, toRpcSig } from "@ethereumjs/util"
 import type { components } from "../openapi.js"
 import { inspect } from "node:util"
-import { boolOpt } from "../utils/options.js"
 
 function printHelp(stream: Writable): void {
 	stream.write(`Usage: node [options] client [options]\n`)
@@ -17,14 +14,14 @@ function printHelp(stream: Writable): void {
 	stream.write('Options:\n')
 	stream.write('  -h, --help            Print this help message\n')
 	stream.write('  -v, --version         Print the version\n')
-	stream.write('  --api-url <url>       API URL                   http://BIND_ADDR:BIND_PORT  http://localhost:3000\n')
+	stream.write('  --api-url <url>       API URL                   http://API_HTTP_HOST:API_HTTP_PORT  http://localhost:3000\n')
 }
 
 export default async function clientMain(globalOpts: GlobalOptions): Promise<number> {
 	const { argv, env, stdin, stdout, stderr, logger, } = globalOpts
 
-	let bindPortOpt = env.BIND_PORT || '3000'
-	let bindAddr = env.BIND_ADDR || 'localhost'
+	let bindAddr = env.API_HTTP_HOST || 'localhost'
+	let bindPortOpt = env.API_HTTP_PORT || '3000'
 	let apiUrl = `${bindAddr}:${bindPortOpt}`
 	if (!/^[a-zA-Z]:\/\//.test(apiUrl)) {
 		// Doesn't start with a protocol? Prepend with http://
@@ -114,7 +111,7 @@ async function cmd(opts: CommandOptions): Promise<void> {
 		const messageHash = hashPersonalMessage(payloadBuf)
 		const ecsig = ecsign(messageHash, privkey)
 		const signature = toRpcSig(ecsig.v, ecsig.r, ecsig.s)
-		const body: components['schemas']['PostBackupRequest'] = {
+		const body: components['schemas']['PostUserBackupRequest'] = {
 			payload: bufferToByteString(payloadBuf),
 			signature: parseByteString(signature),
 		}
@@ -134,7 +131,7 @@ async function cmd(opts: CommandOptions): Promise<void> {
 			logger.error({ status: res.status, statusText: res.statusText, }, 'Failed to send backup')
 			continue
 		}
-		const json = await res.json() as components['schemas']['PostBackupResponse']
+		const json = await res.json() as components['schemas']['PostUserBackupResponse']
 		logger.info({ message: json.message, }, 'Backup received')
 
 		let yn: string = 'y'
@@ -158,7 +155,7 @@ async function cmd(opts: CommandOptions): Promise<void> {
 					logger.error({ status: res.status, statusText: res.statusText, }, 'Failed to get backups')
 					continue
 				}
-				const json = await res.json() as components['schemas']['GetBackupsResponse']
+				const json = await res.json() as components['schemas']['GetUserBackupsResponse']
 				const backups = json.backups
 				for (let i = 0, len = backups.length; i < len; i++) {
 					const backup = backups[i]

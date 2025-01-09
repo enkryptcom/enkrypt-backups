@@ -18,13 +18,13 @@ type Fs = Pick<typeof fs, 'readFile' | 'writeFile' | 'readdir' | 'mkdir' | 'rena
 export class FilesystemStorage implements FileStorage {
 	_fs: Fs
 	_rootDirpath: string
-	_tmpdir: string
+	_tmpDirpath: string
 
-	constructor(opts: { fs: Fs, rootDirpath: string, tmpdir?: string, }) {
-		const { fs, rootDirpath, tmpdir: useTmpdir, } = opts
+	constructor(opts: { fs: Fs, rootDirpath: string, tmpDirpath?: string, }) {
+		const { fs, rootDirpath, tmpDirpath: useTmpdir, } = opts
 		this._fs = fs
 		this._rootDirpath = rootDirpath
-		this._tmpdir = useTmpdir ?? tmpdir()
+		this._tmpDirpath = useTmpdir ?? tmpdir()
 	}
 
 	getPubkeyHashDirpath(pubkeyHash: Hash): string {
@@ -59,7 +59,7 @@ export class FilesystemStorage implements FileStorage {
 
 		const dirpath = dirname(filepath)
 		const filename = basename(filepath)
-		const tmpfilepath = join(this._tmpdir, 'enkrypt-backend', `${filename}-${randomUUID()}.tmp`)
+		const tmpfilepath = join(this._tmpDirpath, 'enkrypt-backend', `${filename}-${randomUUID()}.tmp`)
 		ctx.logger.trace({ pubkeyHash, userId, filepath, tmpfilepath }, 'Saving temporary file')
 
 		const tmpdirpath = dirname(tmpfilepath)
