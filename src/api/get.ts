@@ -14,7 +14,7 @@ export default function createGetVersionHandler(opts: {
 	const { appVersion, } = opts
 
 	return function(_req, res, _next) {
-		const response: ResBody = { message: `Enkrypt API ${appVersion}` }
+		const response: ResBody = { message: `Enkrypt API v${appVersion}` }
 		res
 			.status(HttpStatus.OK)
 			.json(response)

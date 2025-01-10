@@ -73,6 +73,12 @@ export type EnvironmentVariables = {
 	API_CLUSTER_ESTIMATED_MEMORY_MAX?: string
 	API_CLUSTER_MEMORY_RESERVED?: string
 	API_CLUSTER_ADD_WORKER_DEBOUNCE?: string
+
+	API_PROMETHEUS_ENABLED?: string
+	API_PROMETHEUS_HTTP_LOG_LEVEL?: string
+	API_PROMETHEUS_HTTP_HOST?: string
+	API_PROMETHEUS_HTTP_PORT?: string
+	API_PROMETHEUS_HTTP_COMPRESSION?: string
 }
 
 type KeyOf<T, K extends keyof T> = K
@@ -131,6 +137,15 @@ export type ApiClusterEnvironmentVariable = KeyOf<
 	| 'API_CLUSTER_ESTIMATED_MEMORY_MAX'
 	| 'API_CLUSTER_MEMORY_RESERVED'
 	| 'API_CLUSTER_ADD_WORKER_DEBOUNCE'
+>
+
+export type ApiPrometheusEnvironmentVariable = KeyOf<
+	EnvironmentVariables,
+	| 'API_PROMETHEUS_ENABLED'
+	| 'API_PROMETHEUS_HTTP_LOG_LEVEL'
+	| 'API_PROMETHEUS_HTTP_HOST'
+	| 'API_PROMETHEUS_HTTP_PORT'
+	| 'API_PROMETHEUS_HTTP_COMPRESSION'
 >
 
 export const StorageDriver = {
@@ -196,6 +211,14 @@ export type ApiClusterConfig = {
 	estimatedMemoryMaxBytes: number,
 	memoryReservedBytes: number,
 	addWorkerDebounceMs: number,
+}
+
+export type ApiPrometheusConfig = {
+	enabled: boolean,
+	logLevel: string,
+	host: string
+	port: number
+	compression: boolean,
 }
 
 export function getStorageConfig(
@@ -559,6 +582,47 @@ export function getApiClusterConfig(
 	return config
 }
 
+export function getApiPrometheusConfig(
+	env: Pick<EnvironmentVariables, ApiPrometheusEnvironmentVariable>,
+): ApiPrometheusConfig {
+	const {
+		API_PROMETHEUS_ENABLED,
+		API_PROMETHEUS_HTTP_LOG_LEVEL,
+		API_PROMETHEUS_HTTP_HOST,
+		API_PROMETHEUS_HTTP_PORT,
+		API_PROMETHEUS_HTTP_COMPRESSION,
+	} = env
+
+	const enabled = boolOpt(API_PROMETHEUS_ENABLED || 'false')
+	if (enabled === undefined) {
+		throw new Error(`Invalid environment variable API_PROMETHEUS_ENABLED: ${API_PROMETHEUS_ENABLED}`)
+	}
+
+	const logLevel = API_PROMETHEUS_HTTP_LOG_LEVEL || 'warn'
+
+	const host = API_PROMETHEUS_HTTP_HOST || '127.0.0.1'
+
+	const port = intOpt(API_PROMETHEUS_HTTP_PORT || '9090')
+	if (port === undefined || port < 1 || port > 65_535) {
+		throw new Error(`Invalid environment variable API_PROMETHEUS_HTTP_PORT: ${API_PROMETHEUS_HTTP_PORT}`)
+	}
+
+	const compression = boolOpt(API_PROMETHEUS_HTTP_COMPRESSION || 'true')
+	if (compression === undefined) {
+		throw new Error(`Invalid environment variable API_PROMETHEUS_HTTP_COMPRESSION: ${API_PROMETHEUS_HTTP_COMPRESSION}`)
+	}
+
+	const config: ApiPrometheusConfig = {
+		enabled,
+		logLevel,
+		host,
+		port,
+		compression,
+	}
+
+	return config
+}
+
 export function printStorageConfig(prefix: string, logger: Logger, storageConfig: undefined | StorageConfig): void {
 	logger.info(`${prefix}Storage:`)
 	if (storageConfig) {
@@ -643,3 +707,17 @@ export function printApiClusterConfig(prefix: string, logger: Logger, apiCluster
 	}
 }
 
+export function printApiPrometheusConfig(prefix: string, logger: Logger, apiPrometheusConfig: undefined | ApiPrometheusConfig): void {
+	logger.info(`${prefix}Api prometheus:`)
+	if (apiPrometheusConfig) {
+		logger.info(`${prefix}  enabled:      ${apiPrometheusConfig.enabled}`)
+		if (apiPrometheusConfig.enabled) {
+			logger.info(`${prefix}  logLevel:     ${apiPrometheusConfig.logLevel}`)
+			logger.info(`${prefix}  host:         ${apiPrometheusConfig.host}`)
+			logger.info(`${prefix}  port:         ${apiPrometheusConfig.port}`)
+			logger.info(`${prefix}  compression:  ${apiPrometheusConfig.compression}`)
+		}
+	} else {
+		logger.info(`${prefix}  disabled`)
+	}
+}

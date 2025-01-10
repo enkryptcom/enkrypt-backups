@@ -3,9 +3,16 @@ import type { ClusterSettings, Worker as ClusterWorker, Address as ClusterAddres
 import type { Socket as NetSocket, Server as NetServer, } from 'node:net'
 import { createStopSignalHandler } from "../../utils/signals.js";
 import { nextTick } from 'node:process';
-import type { ApiClusterConfig, EnvironmentVariables } from '../../env.js';
+import type { ApiClusterConfig, ApiPrometheusConfig, EnvironmentVariables } from '../../env.js';
 import { ClusterPrimaryMessage, ClusterWorkerMessage } from './cluster-messages.js';
 import type { Logger } from 'pino';
+import { AggregatorRegistry, Registry, type PrometheusContentType } from 'prom-client';
+import { Disposer } from '../../utils/disposer.js';
+import { createPrometheusExporterHttpServer, runPrometheusExporterHttpServer } from '../../utils/prometheus.js';
+import { runHttpServer, type HttpServerControllerEvents } from '../../utils/http.js';
+import type { Context } from '../../types.js';
+import type { Server } from 'node:http';
+import EventEmitter from 'node:events';
 
 /**
  * Manages the API HTTP cluster
@@ -19,20 +26,14 @@ import type { Logger } from 'pino';
 export async function runApiClusterPrimary(opts: {
 	logger: Logger,
 	configCheck: boolean,
-	clusterConfig: Pick<ApiClusterConfig,
-		| 'minWorkers'
-		| 'maxWorkers'
-		| 'estimatedMemoryPrimaryBytes'
-		| 'estimatedMemoryWorkerBytes'
-		| 'estimatedMemoryMaxBytes'
-		| 'memoryReservedBytes'
-		| 'addWorkerDebounceMs'
-	>,
+	clusterConfig: ApiClusterConfig,
+	prometheusConfig: ApiPrometheusConfig,
 }): Promise<void> {
 	const {
 		logger,
 		configCheck,
 		clusterConfig,
+		prometheusConfig,
 	} = opts
 
 	const {
@@ -44,6 +45,22 @@ export async function runApiClusterPrimary(opts: {
 		memoryReservedBytes,
 		addWorkerDebounceMs,
 	} = clusterConfig
+
+	await using disposer = new Disposer({ logger, })
+
+	if (prometheusConfig.enabled) {
+		/** Metrics registry */
+		const registry = new AggregatorRegistry<PrometheusContentType>()
+		const { logLevel, host, port, compression, } = prometheusConfig
+		runPrometheusExporterHttpServer(disposer, {
+			logger,
+			registry: { type: 'cluster', instance: registry, },
+			host,
+			port,
+			compression,
+			logLevel,
+		})
+	}
 
 	let done!: (err?: Error) => void;
 	const donePromise = new Promise<void>(function(res, rej) {
@@ -318,4 +335,5 @@ export function getDesiredWorkerCount(opts: {
 
 	return desiredWorkerCount
 }
+
 

@@ -4,7 +4,7 @@ import { Ajv, } from 'ajv'
 import { parse as parseYaml, stringify as stringifyYaml, } from 'yaml'
 import type { OpenAPIV3_1 } from 'openapi-types'
 import { createStorage } from '../../storage/factory.js';
-import type { CommandConfig, SetupOptions } from './types.js';
+import type { ApiCommandConfig, ApiMetrics, ApiSetupOptions } from './types.js';
 import { createHttpServer } from './http-server.js';
 import { createValidators, } from './validation.js';
 import { createHttpAppRouter } from './http-app-router.js';
@@ -13,8 +13,9 @@ import { createHttpMaintenanceRouter } from './http-maintenance-router.js';
 
 export async function setup(
 	disposer: Disposer,
-	opts: SetupOptions,
-): Promise<CommandConfig> {
+	opts: ApiSetupOptions,
+	metrics?: ApiMetrics,
+): Promise<ApiCommandConfig> {
 	const {
 		logger,
 		storageConfig,
@@ -34,12 +35,13 @@ export async function setup(
 	if (maintenanceMode) {
 		const maintenanceAppRouter = createHttpMaintenanceRouter({
 			disposer,
+			metrics,
 			logger,
 			httpConfig,
 			appVersion,
 		})
 
-		const maintenanceConfig: CommandConfig = {
+		const maintenanceConfig: ApiCommandConfig = {
 			httpAppRouter: maintenanceAppRouter,
 			httpConfig,
 			logger,
@@ -84,6 +86,7 @@ export async function setup(
 
 	const httpAppRouter = createHttpAppRouter({
 		disposer,
+		metrics,
 		logger,
 		validators,
 		openApiDocYaml: stringifyYaml(openApiDoc),
@@ -92,7 +95,7 @@ export async function setup(
 		appVersion,
 	})
 
-	const config: CommandConfig = {
+	const config: ApiCommandConfig = {
 		logger,
 		httpConfig,
 		clusterConfig,

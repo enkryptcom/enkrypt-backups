@@ -1,10 +1,10 @@
 import EventEmitter from "node:events"
 import type { Context } from "../../types.js"
-import type { CommandConfig } from "./types.js"
+import type { ApiCommandConfig } from "./types.js"
 import { runHttpServer, type HttpServerControllerEvents } from "../../utils/http.js"
 
 export async function run(
-	config: CommandConfig,
+	config: ApiCommandConfig,
 	controller: EventEmitter<HttpServerControllerEvents>,
 ): Promise<void> {
 	const {

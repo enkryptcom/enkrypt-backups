@@ -1,17 +1,18 @@
-import type { CommandOptions } from "../lib/api/types.js"
+import type { ApiCommandOptions } from "../lib/api/types.js"
 
 const importCluster = () => import('node:cluster')
 const importRunStandalone = () => import('../lib/api/run-standalone.js')
 const importRunClusterPrimary = () => import('../lib/api/run-cluster-primary.js')
 const importRunClusterWorker = () => import('../lib/api/run-cluster-worker.js')
 
-export async function api(opts: CommandOptions): Promise<void> {
+export async function api(opts: ApiCommandOptions): Promise<void> {
 	const {
 		logger,
 		configCheck,
 		httpConfig,
 		clusterConfig,
 		storageConfig,
+		prometheusConfig,
 	} = opts
 	const { standalone } = clusterConfig
 
@@ -24,6 +25,7 @@ export async function api(opts: CommandOptions): Promise<void> {
 			configCheck,
 			clusterConfig,
 			storageConfig,
+			prometheusConfig,
 			httpConfig,
 		})
 	} else {
@@ -36,6 +38,7 @@ export async function api(opts: CommandOptions): Promise<void> {
 				logger,
 				configCheck,
 				clusterConfig,
+				prometheusConfig,
 			})
 		} else {
 			logger.setBindings({
@@ -51,6 +54,7 @@ export async function api(opts: CommandOptions): Promise<void> {
 				configCheck,
 				clusterConfig,
 				storageConfig,
+				prometheusConfig,
 				httpConfig,
 			})
 		}

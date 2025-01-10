@@ -5,9 +5,11 @@ import { fmtDurationPrecise } from "../utils/time.js";
 import { randomUUID } from "node:crypto";
 import type { Context } from "../types.js";
 import { HttpError, HttpStatus } from "../utils/http.js";
+import type { ApiMetrics } from "../lib/api/types.js";
 
 export function initMiddleware(opts: {
 	disposer: Disposer,
+	metrics?: ApiMetrics,
 	logger: Logger,
 	logReqHeaders: boolean,
 	logResHeaders: boolean,
@@ -16,6 +18,7 @@ export function initMiddleware(opts: {
 }): Handler {
 	const {
 		disposer,
+		metrics,
 		logger,
 		logReqHeaders,
 		logResHeaders,
@@ -42,6 +45,23 @@ export function initMiddleware(opts: {
 			+ `  ${this.statusMessage}`
 			+ `  ${routePath ?? `(No route ${this.req.path}`}`
 		)
+
+		metrics?.httpResponseTimes.observe({
+			method: this.req.method,
+			status: this.statusCode,
+			path: routePath ?? 'UNKNOWN',
+		}, duration)
+		metrics?.totalHttpRequests.inc({
+			method: this.req.method,
+			status: this.statusCode,
+			path: routePath ?? 'UNKNOWN',
+		})
+		metrics?.totalHttpRequestsClosed.inc({
+			method: this.req.method,
+			status: this.statusCode,
+			path: routePath ?? 'UNKNOWN',
+		})
+
 		cleanupRes(this)
 	}
 
@@ -65,6 +85,23 @@ export function initMiddleware(opts: {
 			+ `  ${this.statusMessage}`
 			+ `  ${routePath ?? `(No route ${this.req.path})`}`
 		)
+
+		metrics?.httpResponseTimes.observe({
+			method: this.req.method,
+			status: this.statusCode,
+			path: routePath ?? 'UNKNOWN',
+		}, duration)
+		metrics?.totalHttpRequests.inc({
+			method: this.req.method,
+			status: this.statusCode,
+			path: routePath ?? 'UNKNOWN',
+		})
+		metrics?.totalHttpRequestsFinished.inc({
+			method: this.req.method,
+			status: this.statusCode,
+			path: routePath ?? 'UNKNOWN',
+		})
+
 		cleanupRes(this)
 	}
 
@@ -88,6 +125,12 @@ export function initMiddleware(opts: {
 			+ `  ${this.statusCode}`
 			+ `  ${this.statusMessage}`
 			+ `  ${routePath ?? `(No route ${this.req.path}`}`)
+
+		metrics?.totalHttpResponsesErrored.inc({
+			method: this.req.method,
+			status: this.statusCode,
+			path: routePath ?? 'UNKNOWN',
+		})
 	}
 
 	function cleanupRes(res: Response) {

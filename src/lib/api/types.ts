@@ -1,26 +1,40 @@
 import type { Logger } from "pino"
-import type { ApiClusterConfig, ApiHttpConfig, StorageConfig } from "../../env.js"
+import type { ApiClusterConfig, ApiHttpConfig, ApiPrometheusConfig, StorageConfig } from "../../env.js"
 import type { Server } from "node:http"
 import type { Express } from 'express'
 import type { Context } from "../../types.js"
+import type { Counter, Gauge, Histogram } from "prom-client"
 
-export type CommandOptions = {
+export type ApiMetrics = {
+	uptime: Gauge,
+	totalHttpRequests: Counter<'method' | 'path' | 'status'>
+	totalHttpRequestsFinished: Counter<'method' | 'path' | 'status'>
+	totalHttpRequestsClosed: Counter<'method' | 'path' | 'status'>
+	totalHttpRequestsErrored: Counter<'method' | 'path' | 'status'>
+	totalHttpResponsesErrored: Counter<'method' | 'path' | 'status'>
+	httpResponseTimes: Histogram<'method' | 'path' | 'status'>
+}
+
+
+export type ApiCommandOptions = {
 	logger: Logger,
 	httpConfig: ApiHttpConfig
 	clusterConfig: ApiClusterConfig
 	storageConfig: StorageConfig
+	prometheusConfig: ApiPrometheusConfig,
 	configCheck: boolean,
 }
 
-export type SetupOptions = {
+export type ApiSetupOptions = {
 	logger: Logger,
 	httpConfig: ApiHttpConfig
 	clusterConfig: ApiClusterConfig
 	storageConfig: StorageConfig
+	prometheusConfig: ApiPrometheusConfig,
 	configCheck: boolean,
 }
 
-export type CommandConfig = {
+export type ApiCommandConfig = {
 	logger: Logger,
 	httpConfig: Pick<ApiHttpConfig, 'port' | 'host'>
 	clusterConfig: ApiClusterConfig

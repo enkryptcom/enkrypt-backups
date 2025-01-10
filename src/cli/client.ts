@@ -21,7 +21,7 @@ export default async function clientMain(globalOpts: GlobalOptions): Promise<num
 	const { argv, env, stdin, stdout, stderr, logger, } = globalOpts
 
 	let bindAddr = env.API_HTTP_HOST || 'localhost'
-	let bindPortOpt = env.API_HTTP_PORT || '3000'
+	let bindPortOpt = env.API_HTTP_PORT || '8080'
 	let apiUrl = `${bindAddr}:${bindPortOpt}`
 	if (!/^[a-zA-Z]:\/\//.test(apiUrl)) {
 		// Doesn't start with a protocol? Prepend with http://

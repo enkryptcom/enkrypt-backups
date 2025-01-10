@@ -9,23 +9,19 @@ import { errorHandlerMiddleware } from '../../middleware/error.js';
 import type { ApiHttpConfig } from '../../env.js';
 import createGetHealthHandler from '../../api/get-health.js';
 import createGetVersionHandler from '../../api/get-version.js';
+import type { ApiMetrics } from './types.js';
 
 export function createHttpMaintenanceRouter(opts: {
 	disposer: Disposer,
 	logger: Logger,
-	httpConfig: Pick<ApiHttpConfig,
-		| 'originWhitelist'
-		| 'reqSoftTimeoutMs'
-		| 'reqSoftTimeoutIntervalMs'
-		| 'debugErrors'
-		| 'logReqHeaders'
-		| 'logResHeaders'
-		| 'compression'>,
+	httpConfig: ApiHttpConfig,
+	metrics?: ApiMetrics,
 	appVersion: string,
 }): Express {
 	const {
 		disposer,
 		logger,
+		metrics,
 		httpConfig,
 		appVersion,
 	} = opts
@@ -44,6 +40,7 @@ export function createHttpMaintenanceRouter(opts: {
 
 	app.use(initMiddleware({
 		disposer,
+		metrics,
 		logger,
 		logReqHeaders,
 		logResHeaders,

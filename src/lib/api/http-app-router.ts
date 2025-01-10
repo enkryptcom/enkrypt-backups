@@ -17,27 +17,14 @@ import createGetSchemaHandler from '../../api/get-schema.js';
 import createGetVersionHandler from '../../api/get-version.js';
 import createGetUserBackupsHandler from '../../api/backups/get.js';
 import createPostUserBackupHandler from '../../api/backups/post-backup.js';
+import type { ApiMetrics } from './types.js';
 
 export function createHttpAppRouter(opts: {
 	disposer: Disposer,
 	logger: Logger,
-	httpConfig: Pick<ApiHttpConfig,
-		| 'originWhitelist'
-		| 'trustProxy'
-		| 'reqSoftTimeoutMs'
-		| 'reqSoftTimeoutIntervalMs'
-		| 'reqBodySizeLimitBytes'
-		| 'debugErrors'
-		| 'logReqHeaders'
-		| 'logResHeaders'
-		| 'compression'
-		| 'extraLatencyBaseMs'
-		| 'extraLatencyJitterMs'
-		| 'extraRandomErrorLatencyBaseMs'
-		| 'extraRandomErrorLatencyJitterMs'
-		| 'extraRandomErrorRate'
-	>,
+	httpConfig: ApiHttpConfig,
 	storage: FileStorage,
+	metrics?: ApiMetrics,
 	appVersion: string,
 	validators: Validators,
 	openApiDocYaml: string,
@@ -47,6 +34,7 @@ export function createHttpAppRouter(opts: {
 		logger,
 		httpConfig,
 		storage,
+		metrics,
 		appVersion,
 		openApiDocYaml,
 		validators,
@@ -75,6 +63,7 @@ export function createHttpAppRouter(opts: {
 
 	app.use(initMiddleware({
 		disposer,
+		metrics,
 		logger,
 		logReqHeaders,
 		logResHeaders,
@@ -131,7 +120,10 @@ export function createHttpAppRouter(opts: {
 	})
 
 	// Error handler
-	app.use(errorHandlerMiddleware({ debugErrors, }))
+	app.use(errorHandlerMiddleware({
+		metrics,
+		debugErrors,
+	}))
 
 	return app
 }

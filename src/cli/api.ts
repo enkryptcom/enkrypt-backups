@@ -1,7 +1,7 @@
 import type { Writable } from "node:stream"
 import type { GlobalOptions } from "../types.js"
 import { boolOpt } from "../utils/options.js"
-import { getApiClusterConfig, getApiHttpConfig, getStorageConfig, printApiClusterConfig, printApiHttpConfig, printStorageConfig, type ApiClusterConfig, type ApiHttpConfig, type StorageConfig } from "../env.js"
+import { getApiClusterConfig, getApiHttpConfig, getApiPrometheusConfig, getStorageConfig, printApiClusterConfig, printApiHttpConfig, printApiPrometheusConfig, printStorageConfig, type ApiClusterConfig, type ApiHttpConfig, type ApiPrometheusConfig, type StorageConfig } from "../env.js"
 import { api } from "../commands/api.js"
 
 function printHelp(stream: Writable): void {
@@ -98,11 +98,23 @@ export default async function serveMain(globalOpts: GlobalOptions): Promise<numb
 		return 1
 	}
 
+	let apiPrometheusConfig: ApiPrometheusConfig
+	try {
+		apiPrometheusConfig = getApiPrometheusConfig(env)
+	} catch (err) {
+		printHelp(stderr)
+		stderr.write('\n')
+		stderr.write(`API Prometheus settings are misconfigured\n`)
+		stderr.write(`${(err as Error).message}\n`)
+		return 1
+	}
+
 	if (env.PRINT_OPTIONS === undefined || boolOpt(env.PRINT_OPTIONS)) {
 		logger.info(`Options:`)
 		printStorageConfig('  ', logger, storageConfig)
 		printApiClusterConfig('  ', logger, apiClusterConfig)
 		printApiHttpConfig('  ', logger, apiHttpConfig)
+		printApiPrometheusConfig('  ', logger, apiPrometheusConfig)
 	}
 
 
@@ -111,6 +123,7 @@ export default async function serveMain(globalOpts: GlobalOptions): Promise<numb
 		configCheck,
 		httpConfig: apiHttpConfig,
 		clusterConfig: apiClusterConfig,
+		prometheusConfig: apiPrometheusConfig,
 		storageConfig,
 	})
 

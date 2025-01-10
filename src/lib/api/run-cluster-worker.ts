@@ -4,16 +4,25 @@ import { ClusterPrimaryMessage, ClusterWorkerMessage } from "./cluster-messages.
 import type { HttpServerControllerEvents } from "../../utils/http.js"
 import { run } from "./run.js"
 import { setup } from "./setup.js"
-import type { SetupOptions } from "./types.js"
+import type { ApiMetrics, ApiSetupOptions } from "./types.js"
+import { createMetrics } from "./metrics.js"
+import { AggregatorRegistry, type PrometheusContentType } from "prom-client"
 
-export async function runApiClusterWorker(opts: SetupOptions): Promise<void> {
-	const { logger, configCheck, } = opts
+export async function runApiClusterWorker(opts: ApiSetupOptions): Promise<void> {
+	const { logger, configCheck, prometheusConfig, } = opts
 
 	logger.info('Setting up API worker')
 
 	await using disposer = new Disposer({ logger, })
 
-	const conf = await setup(disposer, opts)
+	let metrics: undefined | ApiMetrics
+	if (prometheusConfig.enabled) {
+		const registry = new AggregatorRegistry<PrometheusContentType>()
+		AggregatorRegistry.setRegistries([registry])
+		metrics = createMetrics({ registry, disposer, })
+	}
+
+	const conf = await setup(disposer, opts, metrics)
 
 	if (configCheck) {
 		logger.info('Config check complete')

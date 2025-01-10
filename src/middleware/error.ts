@@ -1,10 +1,12 @@
 import type { ErrorRequestHandler } from "express"
 import { HttpError, HttpStatus } from "../utils/http.js"
+import type { ApiMetrics } from "../lib/api/types.js"
 
 export function errorHandlerMiddleware(opts: {
+	metrics?: ApiMetrics,
 	debugErrors: boolean,
 }): ErrorRequestHandler {
-	const { debugErrors, } = opts
+	const { metrics, debugErrors, } = opts
 
 	// Error handler
 	return function(_err, req, res, _next) {
@@ -29,7 +31,19 @@ export function errorHandlerMiddleware(opts: {
 			}
 		}
 
-		res.status(err.status).json(result)
+
+		const routePath = typeof req.route?.path === 'string' ? req.route?.path : undefined
+
+		metrics?.totalHttpRequestsErrored.inc({
+			path: routePath ?? 'UNKNOWN',
+			status: err.status,
+			method: req.method,
+		})
+
+		res
+			.status(err.status)
+			.json(result)
+
 	}
 }
 
