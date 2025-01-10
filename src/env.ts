@@ -248,8 +248,8 @@ export function getStorageConfig(
 		case 'fs':
 			return {
 				driver: StorageDriver.FS,
-				rootDir: STORAGE_FILESYSTEM_ROOT_DIRPATH ?? 'storage',
-				tmpDir: STORAGE_FILESYSTEM_TMP_DIRPATH ?? tmpdir(),
+				rootDir: STORAGE_FILESYSTEM_ROOT_DIRPATH || 'storage',
+				tmpDir: STORAGE_FILESYSTEM_TMP_DIRPATH || tmpdir(),
 			}
 		case 's3':
 			if (!STORAGE_S3_BUCKET_NAME) {
@@ -624,7 +624,7 @@ export function getApiPrometheusConfig(
 }
 
 export function printStorageConfig(prefix: string, logger: Logger, storageConfig: undefined | StorageConfig): void {
-	logger.info(`${prefix}Storage:`)
+	logger.info(`${prefix}Storage settings:`)
 	if (storageConfig) {
 		switch (storageConfig.driver) {
 			case StorageDriver.FS:
@@ -654,7 +654,7 @@ export function printStorageConfig(prefix: string, logger: Logger, storageConfig
 }
 
 export function printApiHttpConfig(prefix: string, logger: Logger, apiHttpConfig: undefined | ApiHttpConfig): void {
-	logger.info(`${prefix}Api http:`)
+	logger.info(`${prefix}API HTTP settings:`)
 	if (apiHttpConfig) {
 		logger.info(`${prefix}  originWhitelist:                ${apiHttpConfig.originWhitelist?.map((re) => re.source).join(', ')}`)
 		logger.info(`${prefix}  host:                           ${apiHttpConfig.host}`)
@@ -684,7 +684,7 @@ export function printApiHttpConfig(prefix: string, logger: Logger, apiHttpConfig
 }
 
 export function printApiClusterConfig(prefix: string, logger: Logger, apiClusterConfig: undefined | ApiClusterConfig): void {
-	logger.info(`${prefix}Api cluster:`)
+	logger.info(`${prefix}API cluster settings:`)
 	if (apiClusterConfig) {
 		logger.info(`${prefix}  standalone:                   ${apiClusterConfig.standalone}`)
 		logger.info(`${prefix}  minWorkers:                   ${apiClusterConfig.minWorkers?.toLocaleString()}`)
@@ -708,7 +708,7 @@ export function printApiClusterConfig(prefix: string, logger: Logger, apiCluster
 }
 
 export function printApiPrometheusConfig(prefix: string, logger: Logger, apiPrometheusConfig: undefined | ApiPrometheusConfig): void {
-	logger.info(`${prefix}Api prometheus:`)
+	logger.info(`${prefix}Api Prometheus settings:`)
 	if (apiPrometheusConfig) {
 		logger.info(`${prefix}  enabled:      ${apiPrometheusConfig.enabled}`)
 		if (apiPrometheusConfig.enabled) {
