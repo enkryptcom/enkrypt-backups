@@ -23,6 +23,17 @@ pnpm test
 # pnpm test:fast
 ```
 
+### Running the API with Docker
+
+
+```sh
+# Build the API image
+DOCKER_BUILDKIT=1 docker build -t enkrypt-api .
+
+# Create a container and run the API
+docker run --env-file .env -it --rm enkrypt-api
+```
+
 ### AWS S3 setup
 
 Create an S3 bucket

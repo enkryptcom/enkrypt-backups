@@ -2,7 +2,7 @@ import { cpus, tmpdir, totalmem, } from 'node:os'
 import { boolOpt, bytesOpt, intOpt, msOpt, rateOpt } from './utils/options.js'
 import type { Logger } from 'pino'
 import { fmtDurationPrecise } from './utils/time.js'
-import { fmtBytes, parseBytes } from './utils/bytes.js'
+import { fmtBytes, } from './utils/bytes.js'
 
 declare global {
 	namespace NodeJS {
@@ -602,7 +602,7 @@ export function getApiPrometheusConfig(
 
 	const host = API_PROMETHEUS_HTTP_HOST || '127.0.0.1'
 
-	const port = intOpt(API_PROMETHEUS_HTTP_PORT || '9090')
+	const port = intOpt(API_PROMETHEUS_HTTP_PORT || '9110')
 	if (port === undefined || port < 1 || port > 65_535) {
 		throw new Error(`Invalid environment variable API_PROMETHEUS_HTTP_PORT: ${API_PROMETHEUS_HTTP_PORT}`)
 	}
