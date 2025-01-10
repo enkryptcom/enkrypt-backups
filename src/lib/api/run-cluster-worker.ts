@@ -6,7 +6,7 @@ import { run } from "./run.js"
 import { setup } from "./setup.js"
 import type { ApiMetrics, ApiSetupOptions } from "./types.js"
 import { createMetrics } from "./metrics.js"
-import { AggregatorRegistry, type PrometheusContentType } from "prom-client"
+import { AggregatorRegistry, collectDefaultMetrics, type PrometheusContentType } from "prom-client"
 
 export async function runApiClusterWorker(opts: ApiSetupOptions): Promise<void> {
 	const { logger, configCheck, prometheusConfig, } = opts
@@ -18,6 +18,7 @@ export async function runApiClusterWorker(opts: ApiSetupOptions): Promise<void> 
 	let metrics: undefined | ApiMetrics
 	if (prometheusConfig.enabled) {
 		const registry = new AggregatorRegistry<PrometheusContentType>()
+		collectDefaultMetrics({ register: registry, })
 		AggregatorRegistry.setRegistries([registry])
 		metrics = createMetrics({ registry, disposer, })
 	}

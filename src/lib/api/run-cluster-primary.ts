@@ -6,7 +6,7 @@ import { nextTick } from 'node:process';
 import type { ApiClusterConfig, ApiPrometheusConfig, EnvironmentVariables } from '../../env.js';
 import { ClusterPrimaryMessage, ClusterWorkerMessage } from './cluster-messages.js';
 import type { Logger } from 'pino';
-import { AggregatorRegistry, Registry, type PrometheusContentType } from 'prom-client';
+import { AggregatorRegistry, collectDefaultMetrics, Registry, type PrometheusContentType } from 'prom-client';
 import { Disposer } from '../../utils/disposer.js';
 import { createPrometheusExporterHttpServer, runPrometheusExporterHttpServer } from '../../utils/prometheus.js';
 import { runHttpServer, type HttpServerControllerEvents } from '../../utils/http.js';

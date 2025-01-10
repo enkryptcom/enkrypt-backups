@@ -5,7 +5,7 @@ import type { HttpServerControllerEvents } from "../../utils/http.js"
 import { createStopSignalHandler } from "../../utils/signals.js"
 import { run } from "./run.js"
 import type { ApiMetrics, ApiSetupOptions } from "./types.js"
-import { Registry } from "prom-client"
+import { collectDefaultMetrics, Registry } from "prom-client"
 import { createMetrics } from "./metrics.js"
 import { runPrometheusExporterHttpServer } from "../../utils/prometheus.js"
 
@@ -19,6 +19,7 @@ export async function runApiStandalone(opts: ApiSetupOptions): Promise<void> {
 	let metrics: undefined | ApiMetrics
 	if (prometheusConfig.enabled) {
 		const registry = new Registry()
+		collectDefaultMetrics({ register: registry, })
 		metrics = createMetrics({ registry, disposer, })
 		const { logLevel, host, port, compression, } = prometheusConfig
 		runPrometheusExporterHttpServer(disposer, {
