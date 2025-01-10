@@ -15,7 +15,7 @@ import { join } from "node:path";
 import { gunzip, } from 'node:zlib'
 import type { Backup } from "../storage/interface.js";
 import { setup } from "../lib/api/setup.js";
-import { getApiClusterConfig, getApiHttpConfig, getStorageConfig, } from "../env.js";
+import { getApiClusterConfig, getApiHttpConfig, getApiPrometheusConfig, getStorageConfig, } from "../env.js";
 
 
 describe('e2e', { timeout: 10_000, }, function() {
@@ -23,8 +23,8 @@ describe('e2e', { timeout: 10_000, }, function() {
 	it('should work', async function() {
 		const logger = pino(pinoPretty({ singleLine: true, colorize: true, sync: true, }))
 		// You can turn on logging by changing the level to 'trace' to debug the test
-		// logger.level = 'silent'
-		logger.level = 'trace'
+		logger.level = 'silent'
+		// logger.level = 'trace'
 		await using disposer = new Disposer()
 
 		const httpConfig = getApiHttpConfig({
@@ -38,6 +38,9 @@ describe('e2e', { timeout: 10_000, }, function() {
 			STORAGE_DRIVER: 'FS',
 			STORAGE_FILESYSTEM_ROOT_DIRPATH: 'storage.tests',
 		})
+		const prometheusConfig = getApiPrometheusConfig({
+			API_PROMETHEUS_ENABLED: 'false',
+		})
 
 		const config = await setup(disposer, {
 			logger,
@@ -45,6 +48,7 @@ describe('e2e', { timeout: 10_000, }, function() {
 			httpConfig,
 			clusterConfig,
 			storageConfig,
+			prometheusConfig,
 		})
 
 		const { httpServer, httpAppRouter, httpConfig: { host, port, }, } = config
