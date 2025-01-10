@@ -172,7 +172,6 @@ async function main(argv: string[], env: EnvironmentVariables): Promise<number> 
 				code = 1
 			}
 		}
-		code = 0
 	} catch (err) {
 		logger.error({ err }, 'Unhandled error')
 		exitAfterDrain = true

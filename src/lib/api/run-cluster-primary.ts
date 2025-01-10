@@ -13,6 +13,7 @@ import { runHttpServer, type HttpServerControllerEvents } from '../../utils/http
 import type { Context } from '../../types.js';
 import type { Server } from 'node:http';
 import EventEmitter from 'node:events';
+import { cpus } from 'node:os';
 
 /**
  * Manages the API HTTP cluster
@@ -130,7 +131,7 @@ export async function runApiClusterPrimary(opts: {
 		memoryReservedBytes,
 		estimatedMemoryWorkerBytes,
 		minWorkers,
-		maxWorkers,
+		maxWorkers: Math.min(maxWorkers, cpus().length),
 	})
 
 	logger.info(
