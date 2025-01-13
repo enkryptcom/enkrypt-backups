@@ -43,7 +43,8 @@ export function initMiddleware(opts: {
 			+ `  ${fmtDurationPrecise(duration)}`
 			+ `  ${this.statusCode}`
 			+ `  ${this.statusMessage}`
-			+ `  ${routePath ?? `(No route ${this.req.path}`}`
+			+ `  ${this.req.method}`
+			+ `  ${this.req.path}`
 		)
 
 		metrics?.httpResponseTimes.observe({
@@ -83,7 +84,8 @@ export function initMiddleware(opts: {
 			+ `  ${fmtDurationPrecise(duration)}`
 			+ `  ${this.statusCode}`
 			+ `  ${this.statusMessage}`
-			+ `  ${routePath ?? `(No route ${this.req.path})`}`
+			+ `  ${this.req.method}`
+			+ `  ${this.req.path}`
 		)
 
 		metrics?.httpResponseTimes.observe({
@@ -124,7 +126,9 @@ export function initMiddleware(opts: {
 			+ `  ${fmtDurationPrecise(duration)}`
 			+ `  ${this.statusCode}`
 			+ `  ${this.statusMessage}`
-			+ `  ${routePath ?? `(No route ${this.req.path}`}`)
+			+ `  ${this.req.method}`
+			+ `  ${this.req.path}`
+		)
 
 		metrics?.totalHttpResponsesErrored.inc({
 			method: this.req.method,
