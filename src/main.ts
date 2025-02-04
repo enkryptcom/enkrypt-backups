@@ -6,6 +6,8 @@ import prettyFactory from 'pino-pretty'
 import type { EnvironmentVariables } from "./env.js"
 import { boolOpt } from "./utils/options.js"
 import type { GlobalOptions } from "./types.js"
+import { hostname } from "node:os"
+import { pid } from "node:process"
 
 const { stdout, stderr, stdin, } = process
 
@@ -33,6 +35,7 @@ function printVersion(stream: Writable): void {
 }
 
 let exitAfterDrain = false
+let logJson = false
 async function main(argv: string[], env: EnvironmentVariables): Promise<number> {
 	let logLevel = env.LOG_LEVEL || 'info'
 	let logFormatOpt = env.LOG_FORMAT || 'PRETTY'
@@ -113,6 +116,7 @@ async function main(argv: string[], env: EnvironmentVariables): Promise<number> 
 	let logger: Logger
 	switch (logFormatOpt.trim().toLowerCase()) {
 		case 'json':
+			logJson = true
 			logger = pino()
 			break;
 		case 'pretty': {
@@ -185,7 +189,19 @@ process.exitCode = await main(process.argv.slice(2), process.env)
 
 // Timeout if we take too long to close, possibly due to open resources
 setTimeout(function() {
-	process.stderr.write(`Process timed out waiting to close, possible memory leak.\n`)
+	const msg = "Process timed out waiting to close, possible memory leak."
+	if (logJson) {
+		const obj = {
+			level: 50, // ERROR level
+			timestamp: Date.now(),
+			pid,
+			hostname: hostname(),
+			msg,
+		}
+		process.stderr.write(JSON.stringify(obj) + '\n')
+	} else {
+		process.stderr.write(msg + '\n')
+	}
 	process.exit(1)
 }, 10_000).unref()
 

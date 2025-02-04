@@ -225,10 +225,7 @@ echo "Downloading Prometheus Node Exporter"
 # https://github.com/prometheus/node_exporter/releases
 curl -fLJO https://github.com/prometheus/node_exporter/releases/download/v1.8.2/node_exporter-1.8.2.linux-amd64.tar.gz
 echo "Verifying Prometheus Node Exporter download"
-if [[ ! "$(echo "6809dd0b3ec45fd6e992c19071d6b5253aed3ead7bf0686885a51d85c6643c66 node_exporter-1.8.2.linux-amd64.tar.gz" | sha256sum -c)" ]]; then
-	echo "Prometheus Node Exporter failed sha256sum check"
-	exit 1
-fi
+echo "6809dd0b3ec45fd6e992c19071d6b5253aed3ead7bf0686885a51d85c6643c66 node_exporter-1.8.2.linux-amd64.tar.gz" | sha256sum -c
 echo "Extracting Prometheus Node Exporter"
 tar xvf node_exporter-1.8.2.linux-amd64.tar.gz
 echo "Setting up Node Exporter executable & symlink"

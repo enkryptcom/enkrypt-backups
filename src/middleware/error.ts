@@ -3,7 +3,7 @@ import { HttpError, HttpStatus } from "../utils/http.js"
 import type { ApiMetrics } from "../lib/api/types.js"
 
 export function errorHandlerMiddleware(opts: {
-	metrics?: ApiMetrics,
+	metrics: undefined | ApiMetrics,
 	debugErrors: boolean,
 }): ErrorRequestHandler {
 	const { metrics, debugErrors, } = opts

@@ -49,7 +49,7 @@ describe('e2e', { timeout: 10_000, }, function() {
 			clusterConfig,
 			storageConfig,
 			prometheusConfig,
-		})
+		}, undefined)
 
 		const { httpServer, httpAppRouter, httpConfig: { host, port, }, } = config
 

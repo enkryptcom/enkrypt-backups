@@ -88,7 +88,8 @@ export function createPrometheusExporterHttpServer(disposer: Disposer, opts: {
 	})
 
 	app.use(errorHandlerMiddleware({
-		debugErrors: false
+		debugErrors: false,
+		metrics: undefined,
 	}))
 
 	server.on('request', app)

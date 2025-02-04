@@ -68,7 +68,7 @@ export function createHttpMaintenanceRouter(opts: {
 	})
 
 	// Error handler
-	app.use(errorHandlerMiddleware({ debugErrors, }))
+	app.use(errorHandlerMiddleware({ debugErrors, metrics, }))
 
 	return app
 }

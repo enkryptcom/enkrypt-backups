@@ -14,7 +14,7 @@ import { createHttpMaintenanceRouter } from './http-maintenance-router.js';
 export async function setup(
 	disposer: Disposer,
 	opts: ApiSetupOptions,
-	metrics?: ApiMetrics,
+	metrics: undefined | ApiMetrics,
 ): Promise<ApiCommandConfig> {
 	const {
 		logger,

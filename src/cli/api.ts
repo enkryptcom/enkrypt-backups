@@ -5,13 +5,10 @@ import { getApiClusterConfig, getApiHttpConfig, getApiPrometheusConfig, getStora
 import { api } from "../commands/api.js"
 
 function printHelp(stream: Writable): void {
-	stream.write(`Usage: node [options] serve [options]\n`)
+	stream.write(`Usage: node [options] api [options]\n`)
 	stream.write('\n')
 	stream.write('Options:\n')
 	stream.write('  -h, --help                     Print this help message\n')
-	stream.write('  -v, --version                  Print the version\n')
-	stream.write('  --bind-port <port>             Port to listen on               BIND_PORT     3000\n')
-	stream.write('  --bind-addr <addr>             Address to listen on            BIND_ADDR     127.0.0.1\n')
 	stream.write('  --[no-]config-check            Check the configuration                       false\n')
 	stream.write('  --[no-]standalone              Force the API in standalone mode (not cluster mode)\n')
 }

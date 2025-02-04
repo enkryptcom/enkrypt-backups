@@ -11,19 +11,19 @@ paths:
         200:
           $ref: '#/components/responses/GetRootSuccess'
 
-  /version:
-    get:
-      operationId: GetVersion
-      responses:
-        200:
-          $ref: '#/components/responses/GetVersionSuccess'
-
   /health:
     get:
       operationId: GetHealth
       responses:
         200:
           $ref: '#/components/responses/GetHealthSuccess'
+
+  /version:
+    get:
+      operationId: GetVersion
+      responses:
+        200:
+          $ref: '#/components/responses/GetVersionSuccess'
 
   /schema:
     get:
@@ -83,17 +83,17 @@ components:
           schema:
             $ref: '#/components/schemas/GetRootResponse'
 
-    GetVersionSuccess:
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/GetVersionResponse'
-
     GetHealthSuccess:
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/GetHealthResponse'
+
+    GetVersionSuccess:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/GetVersionResponse'
 
     GetSchemaSuccess:
       content:

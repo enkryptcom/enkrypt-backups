@@ -88,8 +88,10 @@ export class S3Storage implements FileStorage {
 			ctx.logger.trace({ pubkeyHash, prefix, params, }, 'Listing user backups')
 			const result = await this._s3.listObjectsV2(params, { abortSignal: ctx.signal, })
 			continuationToken = result.ContinuationToken
-			ok(Array.isArray(result.Contents), 'Expected result.Contents to be an array')
-			for (const item of result.Contents!) {
+			// Result.Contents will be undefined if the address has no backups
+			const contents = result.Contents ?? []
+			ok(Array.isArray(contents), 'Expected result.Contents to be an array')
+			for (const item of contents!) {
 				strictEqual(typeof item.Key, 'string', 'Expected item.Key to be a string')
 				keys.push(item.Key!)
 			}
