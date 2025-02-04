@@ -20,22 +20,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/version": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["GetVersion"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/health": {
         parameters: {
             query?: never;
@@ -44,6 +28,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["GetHealth"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/version": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetVersion"];
         put?: never;
         post?: never;
         delete?: never;
@@ -94,7 +94,7 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["PostUserBackup"];
-        delete?: never;
+        delete: operations["DeleteUserBackup"];
         options?: never;
         head?: never;
         patch?: never;
@@ -128,6 +128,9 @@ export interface components {
         PostUserBackupResponse: {
             message: string;
         };
+        DeleteUserBackupResponse: {
+            message: string;
+        };
         GetUserBackupsResponse: {
             backups: components["schemas"]["Backup"][];
         };
@@ -147,20 +150,20 @@ export interface components {
                 "application/json": components["schemas"]["GetRootResponse"];
             };
         };
-        GetVersionSuccess: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                "application/json": components["schemas"]["GetVersionResponse"];
-            };
-        };
         GetHealthSuccess: {
             headers: {
                 [name: string]: unknown;
             };
             content: {
                 "application/json": components["schemas"]["GetHealthResponse"];
+            };
+        };
+        GetVersionSuccess: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["GetVersionResponse"];
             };
         };
         GetSchemaSuccess: {
@@ -185,6 +188,14 @@ export interface components {
             };
             content: {
                 "application/json": components["schemas"]["PostUserBackupResponse"];
+            };
+        };
+        DeleteUserBackupSuccess: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["DeleteUserBackupResponse"];
             };
         };
     };
@@ -217,18 +228,6 @@ export interface operations {
             200: components["responses"]["GetRootSuccess"];
         };
     };
-    GetVersion: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: components["responses"]["GetVersionSuccess"];
-        };
-    };
     GetHealth: {
         parameters: {
             query?: never;
@@ -239,6 +238,18 @@ export interface operations {
         requestBody?: never;
         responses: {
             200: components["responses"]["GetHealthSuccess"];
+        };
+    };
+    GetVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["GetVersionSuccess"];
         };
     };
     GetSchema: {
@@ -280,6 +291,21 @@ export interface operations {
         requestBody?: components["requestBodies"]["PostUserBackup"];
         responses: {
             200: components["responses"]["PostUserBackupSuccess"];
+        };
+    };
+    DeleteUserBackup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                publicKey: components["parameters"]["PublicKey"];
+                userId: components["parameters"]["UserId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["DeleteUserBackupSuccess"];
         };
     };
 }

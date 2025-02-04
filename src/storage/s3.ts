@@ -3,7 +3,7 @@ import type { Context, Hash, UUID } from '../types.js'
 import type { Backup, FileStorage } from './interface.js'
 import { gunzip as gunzipCb, gzip as gzipCb } from 'node:zlib'
 import { promisify } from 'node:util'
-import { S3, type ListObjectsV2CommandInput } from '@aws-sdk/client-s3'
+import { NoSuchKey, S3, type ListObjectsV2CommandInput } from '@aws-sdk/client-s3'
 
 const gunzip = promisify(gunzipCb)
 const gzip = promisify(gzipCb)
@@ -137,6 +137,24 @@ export class S3Storage implements FileStorage {
 		const backup: Backup = JSON.parse(json)
 
 		return backup
+	}
+
+	async deleteUserBackup(ctx: Context, pubkeyHash: Hash, userId: UUID): Promise<void> {
+		const key = this.getPubkeyHashUserIdKey(pubkeyHash, userId)
+		ctx.logger.debug({ pubkeyHash, userId, key, }, 'Deleting user backup')
+
+		try {
+			await this._s3.deleteObject({
+				Bucket: this._bucket,
+				Key: key,
+			}, { abortSignal: ctx.signal, })
+		} catch (err) {
+			if ((err as NoSuchKey).name === 'NoSuchKey') {
+				ctx.logger.warn({ pubkeyHash, userId, key, }, 'Failed to delete user backup: not found')
+				return
+			}
+			throw err
+		}
 	}
 }
 

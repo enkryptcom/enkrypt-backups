@@ -11,5 +11,6 @@ export interface FileStorage {
 	getUserBackups(ctx: Context, pubkeyHash: Hash): Promise<null | Backup[]>;
 	getUserBackup(ctx: Context, pubkeyHash: Hash, userId: UUID): Promise<null | Backup>;
 	saveUserBackup(ctx: Context, pubkeyHash: Hash, userId: UUID, backup: Backup): Promise<void>;
+	deleteUserBackup(ctx: Context, pubkeyHash: Hash, userId: UUID): Promise<void>;
 }
 

@@ -115,6 +115,20 @@ export class FilesystemStorage implements FileStorage {
 			throw err
 		}
 	}
+
+	async deleteUserBackup(ctx: Context, pubkeyHash: Hash, userId: UUID): Promise<void> {
+		const pubkeyHashFilename = this.getPubkeyHashUserIdFilepath(pubkeyHash, userId)
+		ctx.logger.debug({ pubkeyHash, userId, pubkeyHashFilename, }, 'Deleting user backup')
+		try {
+			await this._fs.unlink(pubkeyHashFilename)
+		} catch (err) {
+			if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+				ctx.logger.warn({ pubkeyHash, userId, pubkeyHashFilename, }, 'Failed to delete user backup: not found')
+				return
+			}
+			throw err
+		}
+	}
 }
 
 function sortBackupsDescending(backupa: Backup, backupb: Backup): number {

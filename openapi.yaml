@@ -52,6 +52,14 @@ paths:
       responses:
         200:
           $ref: '#/components/responses/PostUserBackupSuccess'
+    delete:
+      operationId: DeleteUserBackup
+      parameters:
+        - $ref: '#/components/parameters/PublicKey'
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        200:
+          $ref: '#/components/responses/DeleteUserBackupSuccess'
 
 components:
   parameters:
@@ -113,6 +121,12 @@ components:
           schema:
             $ref: '#/components/schemas/PostUserBackupResponse'
 
+    DeleteUserBackupSuccess:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/DeleteUserBackupResponse'
+
   schemas:
     ByteString:
       type: string
@@ -173,6 +187,14 @@ components:
           $ref: '#/components/schemas/ByteString'
 
     PostUserBackupResponse:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+
+    DeleteUserBackupResponse:
       type: object
       required:
         - message

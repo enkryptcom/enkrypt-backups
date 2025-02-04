@@ -346,8 +346,8 @@ describe('e2e', { timeout: 10_000, }, function() {
 		strictEqual(mockBackupInFilesystem.payload, bufferToByteString(mockEncryptedBackup), 'Payload mismatch')
 
 		// Check we can retrieve it using the API
-		type GetBackupsResult = components['schemas']['GetUserBackupsResponse']
-		const getBackupsResult = await new Promise<GetBackupsResult>(function(res, rej) {
+		type GetBackupsResult1 = components['schemas']['GetUserBackupsResponse']
+		const getBackupsResult1 = await new Promise<GetBackupsResult1>(function(res, rej) {
 			const request = http.request({
 				host,
 				port,
@@ -392,14 +392,114 @@ describe('e2e', { timeout: 10_000, }, function() {
 			request.end()
 		})
 
-		ok(getBackupsResult && typeof getBackupsResult === 'object', 'Expected object')
-		ok(Array.isArray(getBackupsResult.backups), 'Expected array')
-		deepStrictEqual(getBackupsResult, {
+		ok(getBackupsResult1 && typeof getBackupsResult1 === 'object', 'Expected object')
+		ok(Array.isArray(getBackupsResult1.backups), 'Expected array')
+		deepStrictEqual(getBackupsResult1, {
 			backups: [{
 				userId,
-				updatedAt: getBackupsResult.backups[0].updatedAt, // :)
+				updatedAt: getBackupsResult1.backups[0].updatedAt, // :)
 				payload: bufferToByteString(mockEncryptedBackup),
 			}]
 		} satisfies components['schemas']['GetUserBackupsResponse'])
+
+		// Delete the backup
+		type DeleteBackupResult = components['schemas']['DeleteUserBackupResponse']
+		const deleteBackupResult = await new Promise<DeleteBackupResult>(function(res, rej) {
+			const request = http.request({
+				host,
+				port,
+				path: `/backups/${pubkey}/${userId}`,
+				method: 'DELETE',
+				signal: AbortSignal.timeout(5_000),
+				headers: { 'content-type': 'application/json' },
+			})
+
+			request.on('response', function(response: http.IncomingMessage) {
+				if (response.statusCode !== 200) {
+					rej(new Error(`Expected DELETE backup status code 200, got ${response.statusCode}`))
+					return
+				}
+
+				let errRef: { err: Error } | undefined
+				let chunks: Buffer[] = []
+				response.on('data', function(chunk) {
+					chunks.push(chunk)
+				})
+				response.on('error', function(err) {
+					errRef = { err }
+				})
+				response.on('end', function() {
+					if (errRef) rej(errRef.err)
+					else {
+						try {
+							const json = Buffer.concat(chunks).toString('utf8')
+							const data = JSON.parse(json)
+							res(data)
+						} catch (err) {
+							rej(new Error(`Failed to parse JSON: ${(err as Error)?.message}`))
+						}
+					}
+				})
+			})
+
+			request.on('error', function(err) {
+				rej(err)
+			})
+			request.end()
+		})
+
+		deepStrictEqual(deleteBackupResult, { message: 'Ok', })
+
+		// Check the backup is deleted
+		type GetBackupsResult2 = components['schemas']['GetUserBackupsResponse']
+		const getBackupsResult2 = await new Promise<GetBackupsResult2>(function(res, rej) {
+			const request = http.request({
+				host,
+				port,
+				path: `/backups/${pubkey}`,
+				method: 'GET',
+				signal: AbortSignal.timeout(5_000),
+				headers: { 'content-type': 'application/json' },
+			})
+
+			request.on('response', function(response: http.IncomingMessage) {
+				if (response.statusCode !== 200) {
+					rej(new Error(`Expected GET backups status code 200, got ${response.statusCode}`))
+					return
+				}
+
+				let errRef: { err: Error } | undefined
+				let chunks: Buffer[] = []
+				response.on('data', function(chunk) {
+					chunks.push(chunk)
+				})
+				response.on('error', function(err) {
+					errRef = { err }
+				})
+				response.on('end', function() {
+					if (errRef) rej(errRef.err)
+					else {
+						try {
+							const json = Buffer.concat(chunks).toString('utf8')
+							const data = JSON.parse(json)
+							res(data)
+						} catch (err) {
+							rej(new Error(`Failed to parse JSON: ${(err as Error)?.message}`))
+						}
+					}
+				})
+			})
+
+			request.on('error', function(err) {
+				rej(err)
+			})
+
+			request.end()
+		})
+
+		ok(getBackupsResult2 && typeof getBackupsResult2 === 'object', 'Expected object')
+		ok(Array.isArray(getBackupsResult2.backups), 'Expected array')
+		deepStrictEqual(getBackupsResult2.backups, [], 'Expected empty array (by deep equal)')
+		strictEqual(getBackupsResult2.backups.length, 0, 'Expected empty array (by length)')
 	})
 })
