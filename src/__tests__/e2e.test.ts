@@ -194,13 +194,13 @@ describe('e2e', { timeout: 10_000, }, function() {
 		const expectedVersion = JSON.parse(await readFile('package.json', 'utf8')).version
 		strictEqual(versionResponse.version, expectedVersion, 'Version mismatch')
 
-		// Ping /schema endpoint
-		type SchemaResponse = components['schemas']['GetSchemaResponse']
+		// Ping /schema.yaml endpoint
+		type SchemaResponse = components['schemas']['GetSchemaYamlResponse']
 		const schemaResponse = await new Promise<OpenAPIV3_1.Document>(function(res, rej) {
 			const request = http.request({
 				host,
 				port,
-				path: '/schema',
+				path: '/schema.yaml',
 				method: 'GET',
 				signal: AbortSignal.timeout(5_000),
 			})
@@ -241,7 +241,7 @@ describe('e2e', { timeout: 10_000, }, function() {
 		})
 
 
-		// Check /schema result
+		// Check /schema.yaml result
 		strictEqual(schemaResponse.openapi, '3.1.0')
 		strictEqual(schemaResponse.info.title, 'Enkrypt Backend API')
 
@@ -253,21 +253,20 @@ describe('e2e', { timeout: 10_000, }, function() {
 		const backupPayload = { hello: 'world' }
 		const mockEncryptedBackup = Buffer.from(JSON.stringify(backupPayload), 'utf8')
 
-		const messageHash = hashPersonalMessage(mockEncryptedBackup)
-		const ecsig = ecsign(messageHash, privkey)
-		const signature = toRpcSig(ecsig.v, ecsig.r, ecsig.s)
-
 		type PostBackupResult = components['schemas']['PostUserBackupResponse']
 		const postBackupResult = await new Promise<PostBackupResult>(function(res, rej) {
-			const body: components['schemas']['PostUserBackupRequest'] = {
+			const messageHash = hashPersonalMessage(mockEncryptedBackup)
+			const ecsig = ecsign(messageHash, privkey)
+			const signature = toRpcSig(ecsig.v, ecsig.r, ecsig.s)
+
+			const body: components['schemas']['CreateUserBackupRequest'] = {
 				payload: bufferToByteString(mockEncryptedBackup),
-				signature: parseByteString(signature),
 			}
 
 			const request = http.request({
 				host,
 				port,
-				path: `/backups/${pubkey}/${userId}`,
+				path: `/backups/${pubkey}/users/${userId}?signature=${parseByteString(signature)}`,
 				method: 'POST',
 				signal: AbortSignal.timeout(5_000),
 				headers: { 'content-type': 'application/json' },
@@ -348,10 +347,16 @@ describe('e2e', { timeout: 10_000, }, function() {
 		// Check we can retrieve it using the API
 		type GetBackupsResult1 = components['schemas']['GetUserBackupsResponse']
 		const getBackupsResult1 = await new Promise<GetBackupsResult1>(function(res, rej) {
+			const now = new Date()
+			const message = `${pubkey}-GET-BACKUPS-${(now.getUTCMonth() + 1).toString().padStart(2, '0')}-${now.getUTCDate().toString().padStart(2, '0')}-${now.getUTCFullYear()}`
+			const messageHash = hashPersonalMessage(Buffer.from(message, 'utf8'))
+			const ecsig = ecsign(messageHash, privkey)
+			const signature = toRpcSig(ecsig.v, ecsig.r, ecsig.s)
+
 			const request = http.request({
 				host,
 				port,
-				path: `/backups/${pubkey}`,
+				path: `/backups/${pubkey}?signature=${signature}`,
 				method: 'GET',
 				signal: AbortSignal.timeout(5_000),
 				headers: { 'content-type': 'application/json' },
@@ -359,7 +364,7 @@ describe('e2e', { timeout: 10_000, }, function() {
 
 			request.on('response', function(response: http.IncomingMessage) {
 				if (response.statusCode !== 200) {
-					rej(new Error(`Expected GET backups status code 200, got ${response.statusCode}`))
+					rej(new Error(`Expected GET backups sttus code 200, got ${response.statusCode}`))
 					return
 				}
 
@@ -403,23 +408,20 @@ describe('e2e', { timeout: 10_000, }, function() {
 		} satisfies components['schemas']['GetUserBackupsResponse'])
 
 		// Delete the backup
-		const delNow = new Date()
-		const delMessage = `${userId}-${(delNow.getUTCMonth() + 1).toString().padStart(2, '0')}-${delNow.getUTCDate().toString().padStart(2, '0')}-${delNow.getUTCFullYear()}`
-		const delMessageHash = hashPersonalMessage(Buffer.from(delMessage, 'utf8'))
-		const delEcsig = ecsign(delMessageHash, privkey)
-		const delSignature = toRpcSig(delEcsig.v, delEcsig.r, delEcsig.s)
 
 		type DeleteBackupResult = components['schemas']['DeleteUserBackupResponse']
 		const deleteBackupResult = await new Promise<DeleteBackupResult>(function(res, rej) {
-			const body: components['schemas']['DeleteUserBackupRequest'] = {
-				signature: parseByteString(delSignature),
-			}
+			const now = new Date()
+			const message = `${userId}-DELETE-BACKUP-${(now.getUTCMonth() + 1).toString().padStart(2, '0')}-${now.getUTCDate().toString().padStart(2, '0')}-${now.getUTCFullYear()}`
+			const messageHash = hashPersonalMessage(Buffer.from(message, 'utf8'))
+			const ecsig = ecsign(messageHash, privkey)
+			const signature = toRpcSig(ecsig.v, ecsig.r, ecsig.s)
 
 			const request = http.request({
 				host,
 				port,
-				path: `/backups/${pubkey}/${userId}/delete`,
-				method: 'POST',
+				path: `/backups/${pubkey}/users/${userId}?signature=${signature}`,
+				method: 'DELETE',
 				signal: AbortSignal.timeout(5_000),
 				headers: { 'content-type': 'application/json' },
 			})
@@ -456,7 +458,6 @@ describe('e2e', { timeout: 10_000, }, function() {
 				rej(err)
 			})
 
-			request.write(JSON.stringify(body))
 			request.end()
 		})
 
@@ -465,10 +466,16 @@ describe('e2e', { timeout: 10_000, }, function() {
 		// Check the backup is deleted
 		type GetBackupsResult2 = components['schemas']['GetUserBackupsResponse']
 		const getBackupsResult2 = await new Promise<GetBackupsResult2>(function(res, rej) {
+			const now = new Date()
+			const message = `${pubkey}-GET-BACKUPS-${(now.getUTCMonth() + 1).toString().padStart(2, '0')}-${now.getUTCDate().toString().padStart(2, '0')}-${now.getUTCFullYear()}`
+			const messageHash = hashPersonalMessage(Buffer.from(message, 'utf8'))
+			const ecsig = ecsign(messageHash, privkey)
+			const signature = toRpcSig(ecsig.v, ecsig.r, ecsig.s)
+
 			const request = http.request({
 				host,
 				port,
-				path: `/backups/${pubkey}`,
+				path: `/backups/${pubkey}?signature=${signature}`,
 				method: 'GET',
 				signal: AbortSignal.timeout(5_000),
 				headers: { 'content-type': 'application/json' },

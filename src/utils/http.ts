@@ -150,6 +150,7 @@ export class HttpError extends Error {
 
 	constructor(
 		status: number,
+		// TODO: is this comment below still valid?
 		// Don't set "message" or "status" as a non-string propery because it'll be overridden
 		data?: string | Record<PropertyKey, unknown>,
 		options?: {

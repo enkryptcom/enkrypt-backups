@@ -59,7 +59,55 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["GetSchema"];
+        get: operations["GetSchemaJson"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/schema.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetSchemaJson"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/schema.yml": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetSchemaYml"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/schema.yaml": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetSchemaYaml"];
         put?: never;
         post?: never;
         delete?: never;
@@ -84,7 +132,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/backups/{publicKey}/{userId}": {
+    "/backups/{publicKey}/users/{userId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -93,24 +141,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["PostUserBackup"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/backups/{publicKey}/{userId}/delete": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["DeleteUserBackup"];
-        delete?: never;
+        post: operations["CreateUserBackup"];
+        delete: operations["DeleteUserBackup"];
         options?: never;
         head?: never;
         patch?: never;
@@ -136,13 +168,12 @@ export interface components {
         GetVersionResponse: {
             version: string;
         };
-        GetSchemaResponse: string;
-        PostUserBackupRequest: {
-            signature: components["schemas"]["ByteString"];
-            payload: components["schemas"]["ByteString"];
+        GetSchemaYamlResponse: string;
+        GetSchemaJsonResponse: {
+            [key: string]: unknown;
         };
-        DeleteUserBackupRequest: {
-            signature: components["schemas"]["ByteString"];
+        CreateUserBackupRequest: {
+            payload: components["schemas"]["ByteString"];
         };
         PostUserBackupResponse: {
             message: string;
@@ -185,12 +216,20 @@ export interface components {
                 "application/json": components["schemas"]["GetVersionResponse"];
             };
         };
-        GetSchemaSuccess: {
+        GetSchemaYamlSuccess: {
             headers: {
                 [name: string]: unknown;
             };
             content: {
-                "application/yaml": components["schemas"]["GetSchemaResponse"];
+                "application/yaml": components["schemas"]["GetSchemaYamlResponse"];
+            };
+        };
+        GetSchemaJsonSuccess: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["GetSchemaJsonResponse"];
             };
         };
         GetUserBackupsSuccess: {
@@ -219,18 +258,14 @@ export interface components {
         };
     };
     parameters: {
-        PublicKey: components["schemas"]["PublicKey"];
-        UserId: components["schemas"]["UserId"];
+        PathPublicKey: components["schemas"]["PublicKey"];
+        PathUserId: components["schemas"]["UserId"];
+        QuerySignature: components["schemas"]["ByteString"];
     };
     requestBodies: {
-        PostUserBackup: {
+        CreateUserBackup: {
             content: {
-                "application/json": components["schemas"]["PostUserBackupRequest"];
-            };
-        };
-        DeleteUserBackup: {
-            content: {
-                "application/json": components["schemas"]["DeleteUserBackupRequest"];
+                "application/json": components["schemas"]["CreateUserBackupRequest"];
             };
         };
     };
@@ -275,7 +310,7 @@ export interface operations {
             200: components["responses"]["GetVersionSuccess"];
         };
     };
-    GetSchema: {
+    GetSchemaJson: {
         parameters: {
             query?: never;
             header?: never;
@@ -284,15 +319,53 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            200: components["responses"]["GetSchemaSuccess"];
+            200: components["responses"]["GetSchemaJsonSuccess"];
+        };
+    };
+    GetSchemaJson: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["GetSchemaJsonSuccess"];
+        };
+    };
+    GetSchemaYml: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["GetSchemaYamlSuccess"];
+        };
+    };
+    GetSchemaYaml: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["GetSchemaYamlSuccess"];
         };
     };
     GetUserBackups: {
         parameters: {
-            query?: never;
+            query: {
+                signature: components["parameters"]["QuerySignature"];
+            };
             header?: never;
             path: {
-                publicKey: components["parameters"]["PublicKey"];
+                publicKey: components["parameters"]["PathPublicKey"];
             };
             cookie?: never;
         };
@@ -301,32 +374,36 @@ export interface operations {
             200: components["responses"]["GetUserBackupsSuccess"];
         };
     };
-    PostUserBackup: {
+    CreateUserBackup: {
         parameters: {
-            query?: never;
+            query: {
+                signature: components["parameters"]["QuerySignature"];
+            };
             header?: never;
             path: {
-                publicKey: components["parameters"]["PublicKey"];
-                userId: components["parameters"]["UserId"];
+                publicKey: components["parameters"]["PathPublicKey"];
+                userId: components["parameters"]["PathUserId"];
             };
             cookie?: never;
         };
-        requestBody?: components["requestBodies"]["PostUserBackup"];
+        requestBody?: components["requestBodies"]["CreateUserBackup"];
         responses: {
             200: components["responses"]["PostUserBackupSuccess"];
         };
     };
     DeleteUserBackup: {
         parameters: {
-            query?: never;
+            query: {
+                signature: components["parameters"]["QuerySignature"];
+            };
             header?: never;
             path: {
-                publicKey: components["parameters"]["PublicKey"];
-                userId: components["parameters"]["UserId"];
+                publicKey: components["parameters"]["PathPublicKey"];
+                userId: components["parameters"]["PathUserId"];
             };
             cookie?: never;
         };
-        requestBody?: components["requestBodies"]["DeleteUserBackup"];
+        requestBody?: never;
         responses: {
             200: components["responses"]["DeleteUserBackupSuccess"];
         };

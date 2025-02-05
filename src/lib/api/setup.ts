@@ -90,6 +90,7 @@ export async function setup(
 		logger,
 		validators,
 		openApiDocYaml: stringifyYaml(openApiDoc),
+		openApiDoc,
 		httpConfig,
 		storage,
 		appVersion,

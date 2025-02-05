@@ -111,12 +111,11 @@ async function cmd(opts: CommandOptions): Promise<void> {
 		const messageHash = hashPersonalMessage(payloadBuf)
 		const ecsig = ecsign(messageHash, privkey)
 		const signature = toRpcSig(ecsig.v, ecsig.r, ecsig.s)
-		const body: components['schemas']['PostUserBackupRequest'] = {
+		const body: components['schemas']['CreateUserBackupRequest'] = {
 			payload: bufferToByteString(payloadBuf),
-			signature: parseByteString(signature),
 		}
 		const userId = randomUUID()
-		const reqUrl = `${apiUrl}/backups/${bytesToByteString(pubkey)}/${userId}`
+		const reqUrl = `${apiUrl}/backups/${bytesToByteString(pubkey)}/users/${userId}?signature=${signature}`
 		logger.info({ reqUrl, body, userId, signature, }, 'Sending backup')
 		const res = await fetch(reqUrl, {
 			method: 'POST',

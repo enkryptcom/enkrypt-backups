@@ -27,69 +27,93 @@ paths:
 
   /schema:
     get:
-      operationId: GetSchema
+      operationId: GetSchemaJson
       responses:
         200:
-          $ref: '#/components/responses/GetSchemaSuccess'
+          $ref: '#/components/responses/GetSchemaJsonSuccess'
+
+  /schema.json:
+    get:
+      operationId: GetSchemaJson
+      responses:
+        200:
+          $ref: '#/components/responses/GetSchemaJsonSuccess'
+
+
+  /schema.yml:
+    get:
+      operationId: GetSchemaYml
+      responses:
+        200:
+          $ref: '#/components/responses/GetSchemaYamlSuccess'
+
+  /schema.yaml:
+    get:
+      operationId: GetSchemaYaml
+      responses:
+        200:
+          $ref: '#/components/responses/GetSchemaYamlSuccess'
 
   /backups/{publicKey}:
     get:
       operationId: GetUserBackups
       parameters:
-        - $ref: '#/components/parameters/PublicKey'
+        - $ref: '#/components/parameters/PathPublicKey'
+        - $ref: '#/components/parameters/QuerySignature'
       responses:
         200:
           $ref: '#/components/responses/GetUserBackupsSuccess'
 
-  /backups/{publicKey}/{userId}:
+  /backups/{publicKey}/users/{userId}:
     post:
-      operationId: PostUserBackup
+      operationId: CreateUserBackup
       parameters:
-        - $ref: '#/components/parameters/PublicKey'
-        - $ref: '#/components/parameters/UserId'
+        - $ref: '#/components/parameters/PathPublicKey'
+        - $ref: '#/components/parameters/PathUserId'
+        - $ref: '#/components/parameters/QuerySignature'
       requestBody:
-        $ref: '#/components/requestBodies/PostUserBackup'
+        $ref: '#/components/requestBodies/CreateUserBackup'
       responses:
         200:
           $ref: '#/components/responses/PostUserBackupSuccess'
-
-  /backups/{publicKey}/{userId}/delete:
-    post:
+    delete:
       operationId: DeleteUserBackup
       parameters:
-        - $ref: '#/components/parameters/PublicKey'
-        - $ref: '#/components/parameters/UserId'
-      requestBody:
-        $ref: '#/components/requestBodies/DeleteUserBackup'
+        - $ref: '#/components/parameters/PathPublicKey'
+        - $ref: '#/components/parameters/PathUserId'
+        - $ref: '#/components/parameters/QuerySignature'
       responses:
         200:
           $ref: '#/components/responses/DeleteUserBackupSuccess'
 
 components:
   parameters:
-    PublicKey:
+    PathPublicKey:
       name: publicKey
       in: path
       # required: true # OpenAPI 3.0 property not compatible with JSON schema
       schema:
         $ref: '#/components/schemas/PublicKey'
 
-    UserId:
+    PathUserId:
       name: userId
       in: path
       # required: true # OpenAPI 3.0 property not compatible with JSON schema
       schema:
         $ref: '#/components/schemas/UserId'
 
+    QuerySignature:
+      name: signature
+      in: query
+      # required: true # OpenAPI 3.0 property not compatible with JSON schema
+      schema:
+        $ref: '#/components/schemas/ByteString'
+
   requestBodies:
-    PostUserBackup:
+    CreateUserBackup:
       content:
         application/json:
-          $ref: '#/components/schemas/PostUserBackupRequest'
-    DeleteUserBackup:
-      content:
-        application/json:
-          $ref: '#/components/schemas/DeleteUserBackupRequest'
+          $ref: '#/components/schemas/CreateUserBackupRequest'
 
   responses:
     GetRootSuccess:
@@ -110,11 +134,17 @@ components:
           schema:
             $ref: '#/components/schemas/GetVersionResponse'
 
-    GetSchemaSuccess:
+    GetSchemaYamlSuccess:
       content:
         application/yaml:
           schema:
-            $ref: '#/components/schemas/GetSchemaResponse'
+            $ref: '#/components/schemas/GetSchemaYamlResponse'
+
+    GetSchemaJsonSuccess:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/GetSchemaJsonResponse'
 
     GetUserBackupsSuccess:
       content:
@@ -179,26 +209,19 @@ components:
         version:
           type: string
 
-    GetSchemaResponse:
+    GetSchemaYamlResponse:
       type: string
 
-    PostUserBackupRequest:
+    GetSchemaJsonResponse:
+      type: object
+      additionalProperties: true
+
+    CreateUserBackupRequest:
       type: object
       required:
-        - signature
         - payload
       properties:
-        signature:
-          $ref: '#/components/schemas/ByteString'
         payload:
-          $ref: '#/components/schemas/ByteString'
-
-    DeleteUserBackupRequest:
-      type: object
-      required:
-        - signature
-      properties:
-        signature:
           $ref: '#/components/schemas/ByteString'
 
     PostUserBackupResponse:

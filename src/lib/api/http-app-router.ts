@@ -13,12 +13,14 @@ import type { ApiHttpConfig } from '../../env.js';
 import type { Validators } from './validation.js';
 import createGetHandler from '../../api/get.js';
 import createGetHealthHandler from '../../api/get-health.js';
-import createGetSchemaHandler from '../../api/get-schema.js';
 import createGetVersionHandler from '../../api/get-version.js';
-import createGetUserBackupsHandler from '../../api/backups/get.js';
-import createPostUserBackupHandler from '../../api/backups/post-backup.js';
 import type { ApiMetrics } from './types.js';
-import createDeleteUserBackupHandler from '../../api/backups/delete-backup.js';
+import createGetSchemaYamlHandler from '../../api/get-schema-yaml.js';
+import createGetSchemaJsonHandler from '../../api/get-schema-json.js';
+import type { OpenAPIV3_1 } from 'openapi-types';
+import createGetBackupsHandler from '../../api/backups/get-backups.js';
+import createCreateUserBackupHandler from '../../api/backups/users/post-user-backup.js';
+import createDeleteUserBackupHandler from '../../api/backups/users/delete-user-backup.js';
 
 export function createHttpAppRouter(opts: {
 	disposer: Disposer,
@@ -29,6 +31,7 @@ export function createHttpAppRouter(opts: {
 	appVersion: string,
 	validators: Validators,
 	openApiDocYaml: string,
+	openApiDoc: OpenAPIV3_1.Document,
 }): Express {
 	const {
 		disposer,
@@ -38,6 +41,7 @@ export function createHttpAppRouter(opts: {
 		metrics,
 		appVersion,
 		openApiDocYaml,
+		openApiDoc,
 		validators,
 	} = opts
 
@@ -111,10 +115,13 @@ export function createHttpAppRouter(opts: {
 	app.get('/', createGetHandler({ appVersion, }))
 	app.get('/health', createGetHealthHandler())
 	app.get('/version', createGetVersionHandler({ appVersion }))
-	app.get('/schema', createGetSchemaHandler({ openApiDocYaml }))
-	app.get('/backups/:publicKey', createGetUserBackupsHandler({ validators, storage }))
-	app.post('/backups/:publicKey/:userId', createPostUserBackupHandler({ validators, storage, }))
-	app.post('/backups/:publicKey/:userId/delete', createDeleteUserBackupHandler({ validators, storage, }))
+	app.get('/schema', createGetSchemaJsonHandler({ openApiDoc, }))
+	app.get('/schema.json', createGetSchemaJsonHandler({ openApiDoc, }))
+	app.get('/schema.yml', createGetSchemaYamlHandler({ openApiDocYaml }))
+	app.get('/schema.yaml', createGetSchemaYamlHandler({ openApiDocYaml }))
+	app.get('/backups/:publicKey', createGetBackupsHandler({ validators, storage }))
+	app.post('/backups/:publicKey/users/:userId', createCreateUserBackupHandler({ validators, storage, }))
+	app.delete('/backups/:publicKey/users/:userId', createDeleteUserBackupHandler({ validators, storage, }))
 
 	// 404
 	app.use(function(_req, _res, next) {
