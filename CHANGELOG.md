@@ -1,4 +1,4 @@
-## Upcoming
+## Release 0.1.5 (2025-02-05)
 
 - Require signature to get user backups
 - New endpoints
