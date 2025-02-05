@@ -52,11 +52,15 @@ paths:
       responses:
         200:
           $ref: '#/components/responses/PostUserBackupSuccess'
-    delete:
+
+  /backups/{publicKey}/{userId}/delete:
+    post:
       operationId: DeleteUserBackup
       parameters:
         - $ref: '#/components/parameters/PublicKey'
         - $ref: '#/components/parameters/UserId'
+      requestBody:
+        $ref: '#/components/requestBodies/DeleteUserBackup'
       responses:
         200:
           $ref: '#/components/responses/DeleteUserBackupSuccess'
@@ -79,10 +83,13 @@ components:
 
   requestBodies:
     PostUserBackup:
-      description: hi!
       content:
         application/json:
           $ref: '#/components/schemas/PostUserBackupRequest'
+    DeleteUserBackup:
+      content:
+        application/json:
+          $ref: '#/components/schemas/DeleteUserBackupRequest'
 
   responses:
     GetRootSuccess:
@@ -184,6 +191,14 @@ components:
         signature:
           $ref: '#/components/schemas/ByteString'
         payload:
+          $ref: '#/components/schemas/ByteString'
+
+    DeleteUserBackupRequest:
+      type: object
+      required:
+        - signature
+      properties:
+        signature:
           $ref: '#/components/schemas/ByteString'
 
     PostUserBackupResponse:

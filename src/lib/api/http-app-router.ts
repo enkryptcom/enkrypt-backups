@@ -114,7 +114,7 @@ export function createHttpAppRouter(opts: {
 	app.get('/schema', createGetSchemaHandler({ openApiDocYaml }))
 	app.get('/backups/:publicKey', createGetUserBackupsHandler({ validators, storage }))
 	app.post('/backups/:publicKey/:userId', createPostUserBackupHandler({ validators, storage, }))
-	app.delete('/backups/:publicKey/:userId', createDeleteUserBackupHandler({ validators, storage, }))
+	app.post('/backups/:publicKey/:userId/delete', createDeleteUserBackupHandler({ validators, storage, }))
 
 	// 404
 	app.use(function(_req, _res, next) {

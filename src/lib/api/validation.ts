@@ -28,6 +28,7 @@ export type Validators = {
 	pubkeyParameter: HttpValidator<components['parameters']['PublicKey']>,
 	userIdParameter: HttpValidator<components['parameters']['UserId']>,
 	postUserBackupRequest: HttpValidator<components['schemas']['PostUserBackupRequest']>
+	deleteUserBackupRequest: HttpValidator<components['schemas']['DeleteUserBackupRequest']>
 }
 
 
@@ -57,6 +58,7 @@ export function createValidators(opts: {
 
 	const validators: Validators = {
 		postUserBackupRequest: new HttpValidator(ajv.getSchema('#/components/schemas/PostUserBackupRequest')!),
+		deleteUserBackupRequest: new HttpValidator(ajv.getSchema('#/components/schemas/DeleteUserBackupRequest')!),
 		pubkeyParameter: new HttpValidator(ajv.getSchema('#/components/schemas/PublicKey')!),
 		userIdParameter: new HttpValidator(ajv.getSchema('#/components/schemas/UserId')!),
 	}

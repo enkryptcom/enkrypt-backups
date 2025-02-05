@@ -1,10 +1,12 @@
 import type { RequestHandler } from "express"
 import type { operations } from "../../openapi.js"
-import { HttpStatus } from "../../utils/http.js"
-import { bufferToByteString, byteStringToBytes, parseByteString, parseUUID } from "../../utils/coersion.js"
+import { HttpError, HttpStatus } from "../../utils/http.js"
+import { bufferToByteString, bytesToByteString, byteStringToBytes, parseByteString, parseUUID } from "../../utils/coersion.js"
 import type { Validators } from "../../lib/api/validation.js"
 import { createHash } from "node:crypto"
 import type { FileStorage } from "../../storage/interface.js"
+import { ecrecover, fromRpcSig, hashPersonalMessage } from "@ethereumjs/util"
+import { ErrorMessage } from "../../lib/api/errors.js"
 
 type Params = operations['DeleteUserBackup']['parameters']['path']
 type ReqBody = operations['DeleteUserBackup']['requestBody']
@@ -25,6 +27,39 @@ export default function createDeleteUserBackupHandler(opts: {
 		try {
 			const pubkey = parseByteString(validators.pubkeyParameter.validate(req.params.publicKey))
 			const userId = parseUUID(validators.userIdParameter.validate(req.params.userId))
+			const body = validators.deleteUserBackupRequest.validate(req.body)
+			const signature = parseByteString(body.signature)
+
+			const now = new Date()
+			// Now minus 10 minutes
+			const lb = new Date(now.valueOf() - 10 * 60 * 1_000)
+			// Now plus 10 minutes
+			const ub = new Date(now.valueOf() + 10 * 60 * 1_000)
+
+			const ymdnow = `${(now.getUTCMonth() + 1).toString().padStart(2, '0')}-${now.getUTCDate().toString().padStart(2, '0')}-${now.getUTCFullYear()}`
+			const ymdlb = `${(lb.getUTCMonth() + 1).toString().padStart(2, '0')}-${lb.getUTCDate().toString().padStart(2, '0')}-${lb.getUTCFullYear()}`
+			const ymdub = `${(ub.getUTCMonth() + 1).toString().padStart(2, '0')}-${ub.getUTCDate().toString().padStart(2, '0')}-${ub.getUTCFullYear()}`
+
+			const legitMessages = new Set([
+				`${userId}-${ymdnow}`,
+				`${userId}-${ymdlb}`,
+				`${userId}-${ymdub}`
+			])
+
+			const esig = fromRpcSig(parseByteString(signature))
+			let provenOwnership = false
+			for (const message of legitMessages) {
+				const messageHash = hashPersonalMessage(Buffer.from(message, 'utf8'))
+				const messagePubkey = bytesToByteString(ecrecover(messageHash, esig.v, esig.r, esig.s))
+				if (pubkey === messagePubkey) {
+					provenOwnership = true
+					break;
+				}
+			}
+
+			if (!provenOwnership) {
+				throw new HttpError(HttpStatus.BadRequest, ErrorMessage.SIGNATURE_DOES_NOT_MATCH_PUBKEY)
+			}
 
 			const hasher = createHash('sha256')
 			hasher.update(byteStringToBytes(pubkey))

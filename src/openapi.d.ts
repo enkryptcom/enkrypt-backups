@@ -94,7 +94,23 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["PostUserBackup"];
-        delete: operations["DeleteUserBackup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/backups/{publicKey}/{userId}/delete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["DeleteUserBackup"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -124,6 +140,9 @@ export interface components {
         PostUserBackupRequest: {
             signature: components["schemas"]["ByteString"];
             payload: components["schemas"]["ByteString"];
+        };
+        DeleteUserBackupRequest: {
+            signature: components["schemas"]["ByteString"];
         };
         PostUserBackupResponse: {
             message: string;
@@ -204,10 +223,14 @@ export interface components {
         UserId: components["schemas"]["UserId"];
     };
     requestBodies: {
-        /** @description hi! */
         PostUserBackup: {
             content: {
                 "application/json": components["schemas"]["PostUserBackupRequest"];
+            };
+        };
+        DeleteUserBackup: {
+            content: {
+                "application/json": components["schemas"]["DeleteUserBackupRequest"];
             };
         };
     };
@@ -303,7 +326,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: components["requestBodies"]["DeleteUserBackup"];
         responses: {
             200: components["responses"]["DeleteUserBackupSuccess"];
         };

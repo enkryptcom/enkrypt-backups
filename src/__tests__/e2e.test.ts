@@ -403,13 +403,23 @@ describe('e2e', { timeout: 10_000, }, function() {
 		} satisfies components['schemas']['GetUserBackupsResponse'])
 
 		// Delete the backup
+		const delNow = new Date()
+		const delMessage = `${userId}-${(delNow.getUTCMonth() + 1).toString().padStart(2, '0')}-${delNow.getUTCDate().toString().padStart(2, '0')}-${delNow.getUTCFullYear()}`
+		const delMessageHash = hashPersonalMessage(Buffer.from(delMessage, 'utf8'))
+		const delEcsig = ecsign(delMessageHash, privkey)
+		const delSignature = toRpcSig(delEcsig.v, delEcsig.r, delEcsig.s)
+
 		type DeleteBackupResult = components['schemas']['DeleteUserBackupResponse']
 		const deleteBackupResult = await new Promise<DeleteBackupResult>(function(res, rej) {
+			const body: components['schemas']['DeleteUserBackupRequest'] = {
+				signature: parseByteString(delSignature),
+			}
+
 			const request = http.request({
 				host,
 				port,
-				path: `/backups/${pubkey}/${userId}`,
-				method: 'DELETE',
+				path: `/backups/${pubkey}/${userId}/delete`,
+				method: 'POST',
 				signal: AbortSignal.timeout(5_000),
 				headers: { 'content-type': 'application/json' },
 			})
@@ -445,6 +455,8 @@ describe('e2e', { timeout: 10_000, }, function() {
 			request.on('error', function(err) {
 				rej(err)
 			})
+
+			request.write(JSON.stringify(body))
 			request.end()
 		})
 
