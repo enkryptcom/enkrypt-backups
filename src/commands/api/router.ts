@@ -10,17 +10,17 @@ import { errorHandlerMiddleware } from '../../middleware/error.js';
 import { latencyMiddleware } from '../../middleware/latency.js';
 import { randomErrorsMiddleware } from '../../middleware/random-errors.js';
 import type { ApiHttpConfig } from '../../env.js';
-import type { Validators } from './validation.js';
 import createGetHandler from '../../api/get.js';
 import createGetHealthHandler from '../../api/get-health.js';
 import createGetVersionHandler from '../../api/get-version.js';
-import type { ApiMetrics } from './types.js';
 import createGetSchemaYamlHandler from '../../api/get-schema-yaml.js';
 import createGetSchemaJsonHandler from '../../api/get-schema-json.js';
 import type { OpenAPIV3_1 } from 'openapi-types';
 import createGetBackupsHandler from '../../api/backups/get-backups.js';
 import createCreateUserBackupHandler from '../../api/backups/users/post-user-backup.js';
 import createDeleteUserBackupHandler from '../../api/backups/users/delete-user-backup.js';
+import type { Validators } from '../../validation.js';
+import type { ApiMetrics } from './metrics.js';
 
 export function createHttpAppRouter(opts: {
 	disposer: Disposer,
@@ -81,14 +81,6 @@ export function createHttpAppRouter(opts: {
 		app.use(useCompression())
 	}
 
-	// Cors
-	if (originWhitelist !== undefined) {
-		app.use(corsMiddleware({ originWhitelist }))
-	}
-
-	// Parse JSON bodies when Header Content-Type=application/json
-	app.use(express.json({ limit: reqBodySizeLimitBytes, }))
-
 	// Inject random latency
 	if (extraLatencyBaseMs > 0 || extraLatencyJitterMs > 0) {
 		app.use(latencyMiddleware({
@@ -98,15 +90,20 @@ export function createHttpAppRouter(opts: {
 	}
 
 	// Inject random errors
-	if (
-		(extraRandomErrorLatencyBaseMs > 0 || extraRandomErrorLatencyJitterMs > 0)
-		&& extraRandomErrorRate > 0
-	) {
+	if (extraRandomErrorRate > 0) {
 		app.use(randomErrorsMiddleware({
 			latencyBase: extraRandomErrorLatencyBaseMs,
 			latencyJitter: extraRandomErrorLatencyJitterMs,
 			errorRate: extraRandomErrorRate,
 		}))
+	}
+
+	// Parse JSON bodies when Header Content-Type=application/json
+	app.use(express.json({ limit: reqBodySizeLimitBytes, }))
+
+	// Cors
+	if (originWhitelist) {
+		app.use(corsMiddleware({ originWhitelist }))
 	}
 
 	// Serve static files
@@ -129,10 +126,7 @@ export function createHttpAppRouter(opts: {
 	})
 
 	// Error handler
-	app.use(errorHandlerMiddleware({
-		metrics,
-		debugErrors,
-	}))
+	app.use(errorHandlerMiddleware({ metrics, debugErrors, }))
 
 	return app
 }

@@ -283,7 +283,7 @@ sudo tee /etc/enkrypt-api/node.env >/dev/null << 'NODE_ENVFILE'
 # users' nvm installation in order for the service to start with this
 # nodejs version
 #
-NODE_VERSION=v23.6.0
+NODE_VERSION=v23.7.0
 NODE_ENVFILE
 sudo chown root:ubuntu /etc/enkrypt-api/node.env
 sudo chmod 640 /etc/enkrypt-api/node.env
@@ -314,9 +314,9 @@ bash < nvm-install.sh
 rm nvm-install.sh
 source /opt/enkrypt-api/.nvm/nvm.sh
 
-echo "Installing nodejs v23.6.0"
-nvm install v23.6.0
-nvm alias default v23.6.0
+echo "Installing nodejs v23.7.0"
+nvm install v23.7.0
+nvm alias default v23.7.0
 nvm use default
 
 echo "Installing pnpm via npm"

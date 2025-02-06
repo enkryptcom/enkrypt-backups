@@ -2,7 +2,7 @@
 # and production code artifacts
 
 # Builder stage
-FROM node:23.6.0-alpine3.21 as base
+FROM node:23.7.0-alpine3.21 as base
 
 WORKDIR /app
 ENV PNPM_HOME="/pnpm"

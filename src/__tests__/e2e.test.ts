@@ -9,13 +9,13 @@ import { parse as parseYaml } from 'yaml'
 import { type OpenAPIV3_1 } from "openapi-types";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { ecsign, hashPersonalMessage, privateToPublic, toRpcSig, } from '@ethereumjs/util'
-import { bufferToByteString, bytesToByteString, byteStringToBytes, parseByteString } from "../utils/coersion.js";
+import { bufferToByteString, bytesToByteString, byteStringToBytes, } from "../utils/coersion.js";
 import pinoPretty from 'pino-pretty'
 import { join } from "node:path";
 import { gunzip, } from 'node:zlib'
 import type { Backup } from "../storage/interface.js";
-import { setup } from "../lib/api/setup.js";
-import { getApiClusterConfig, getApiHttpConfig, getApiPrometheusConfig, getStorageConfig, } from "../env.js";
+import { getApiHttpConfig, getStorageConfig, } from "../env.js";
+import { setup } from "../commands/api/setup.js";
 
 
 describe('e2e', { timeout: 10_000, }, function() {
@@ -27,33 +27,29 @@ describe('e2e', { timeout: 10_000, }, function() {
 		// logger.level = 'trace'
 		await using disposer = new Disposer()
 
+		const host = '127.0.0.1'
+		const port = 3002
+
 		const httpConfig = getApiHttpConfig({
 			API_HTTP_HOST: '127.0.0.1',
 			API_HTTP_PORT: '3002',
-		})
-		const clusterConfig = getApiClusterConfig({
-			API_CLUSTER_STANDALONE: 'true',
 		})
 		const storageConfig = getStorageConfig({
 			STORAGE_DRIVER: 'FS',
 			STORAGE_FILESYSTEM_ROOT_DIRPATH: 'storage.tests',
 		})
-		const prometheusConfig = getApiPrometheusConfig({
-			API_PROMETHEUS_ENABLED: 'false',
+
+		const config = await setup({
+			disposer,
+			logger,
+			metrics: undefined,
+			httpConfig,
+			storageConfig,
 		})
 
-		const config = await setup(disposer, {
-			logger,
-			configCheck: false,
-			httpConfig,
-			clusterConfig,
-			storageConfig,
-			prometheusConfig,
-		}, undefined)
+		const { httpServer, httpRouter, } = config
 
-		const { httpServer, httpAppRouter, httpConfig: { host, port, }, } = config
-
-		httpServer.on('request', httpAppRouter)
+		httpServer.on('request', httpRouter)
 
 		// Start listening on the HTTP server
 		await new Promise<void>(function(res, rej) {
@@ -266,7 +262,7 @@ describe('e2e', { timeout: 10_000, }, function() {
 			const request = http.request({
 				host,
 				port,
-				path: `/backups/${pubkey}/users/${userId}?signature=${parseByteString(signature)}`,
+				path: `/backups/${pubkey}/users/${userId}?signature=${signature}`,
 				method: 'POST',
 				signal: AbortSignal.timeout(5_000),
 				headers: { 'content-type': 'application/json' },
@@ -364,7 +360,7 @@ describe('e2e', { timeout: 10_000, }, function() {
 
 			request.on('response', function(response: http.IncomingMessage) {
 				if (response.statusCode !== 200) {
-					rej(new Error(`Expected GET backups sttus code 200, got ${response.statusCode}`))
+					rej(new Error(`Expected GET backups status code 200, got ${response.statusCode}`))
 					return
 				}
 

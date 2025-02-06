@@ -1,7 +1,6 @@
 import useCompression from 'compression'
 import express, { type Express } from 'express';
 import type { Logger } from 'pino';
-import { HttpStatus, } from '../../utils/http.js';
 import { Disposer } from '../../utils/disposer.js';
 import { initMiddleware } from '../../middleware/init.js';
 import { corsMiddleware } from '../../middleware/cors.js';
@@ -9,13 +8,14 @@ import { errorHandlerMiddleware } from '../../middleware/error.js';
 import type { ApiHttpConfig } from '../../env.js';
 import createGetHealthHandler from '../../api/get-health.js';
 import createGetVersionHandler from '../../api/get-version.js';
-import type { ApiMetrics } from './types.js';
+import type { ApiMetrics } from './metrics.js';
+import { maintenanceMiddleware } from '../../middleware/maintenance.js';
 
 export function createHttpMaintenanceRouter(opts: {
 	disposer: Disposer,
 	logger: Logger,
 	httpConfig: ApiHttpConfig,
-	metrics?: ApiMetrics,
+	metrics: undefined | ApiMetrics,
 	appVersion: string,
 }): Express {
 	const {
@@ -54,18 +54,15 @@ export function createHttpMaintenanceRouter(opts: {
 	}
 
 	// Cors
-	if (originWhitelist !== undefined) {
+	if (originWhitelist) {
 		app.use(corsMiddleware({ originWhitelist }))
 	}
 
 	app.get('/health', createGetHealthHandler())
 	app.get('/version', createGetVersionHandler({ appVersion }))
 
-	app.use(function(_req, res, _next) {
-		res
-			.status(HttpStatus.ServiceUnavailable)
-			.json({ message: `Enkrypt API down for maintenance ${appVersion}` })
-	})
+	// All other routes - 503 Error
+	app.use(maintenanceMiddleware({ appVersion, }))
 
 	// Error handler
 	app.use(errorHandlerMiddleware({ debugErrors, metrics, }))

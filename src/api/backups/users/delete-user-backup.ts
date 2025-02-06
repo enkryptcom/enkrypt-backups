@@ -2,12 +2,11 @@ import type { RequestHandler } from "express"
 import type { operations } from "../../../openapi.js"
 import { HttpError, HttpStatus } from "../../../utils/http.js"
 import { bufferToByteString, bytesToByteString, byteStringToBytes, parseByteString, parseUUID } from "../../../utils/coersion.js"
-import type { Validators } from "../../../lib/api/validation.js"
 import { createHash } from "node:crypto"
 import type { FileStorage } from "../../../storage/interface.js"
 import { ecrecover, fromRpcSig, hashPersonalMessage } from "@ethereumjs/util"
-import { ErrorMessage } from "../../../lib/api/errors.js"
 import { ERROR_MESSAGE } from "../../../errors.js"
+import type { Validators } from "../../../validation.js"
 
 type Params = operations['DeleteUserBackup']['parameters']['path']
 type ReqBody = operations['DeleteUserBackup']['requestBody']
@@ -82,7 +81,7 @@ export default function createDeleteUserBackupHandler(opts: {
 			}
 
 			if (!provenOwnership) {
-				throw new HttpError(HttpStatus.BadRequest, ErrorMessage.SIGNATURE_DOES_NOT_MATCH_PUBKEY)
+				throw new HttpError(HttpStatus.BadRequest, ERROR_MESSAGE.SIGNATURE_DOES_NOT_MATCH_PUBKEY)
 			}
 
 			const hasher = createHash('sha256')

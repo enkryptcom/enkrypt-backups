@@ -32,3 +32,18 @@ export function sleep(ms: number, signal: AbortSignal): Promise<void> {
 		signal.addEventListener('abort', onAbort)
 	})
 }
+
+export function allSettled<T extends readonly unknown[] | []>(values: T): Promise<{ -readonly [P in keyof T]: Awaited<T[P]>; }>;
+export function allSettled<T>(values: Iterable<T | PromiseLike<T>>): Promise<Awaited<T>[]>;
+export async function allSettled(values: Iterable<any>): Promise<any[]> {
+	const settledResults = await Promise.allSettled(values)
+	const len = settledResults.length
+	const results = new Array(len)
+	for (let i = 0; i < len; i++) {
+		const settledResult = settledResults[i]
+		if (settledResult.status === 'rejected') throw settledResult.reason
+		results[i] = settledResult.value
+	}
+	return results
+}
+

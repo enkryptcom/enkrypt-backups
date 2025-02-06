@@ -3,11 +3,12 @@
 import { type Writable } from "node:stream"
 import { pino, type Logger } from 'pino'
 import prettyFactory from 'pino-pretty'
-import type { EnvironmentVariables } from "./env.js"
+import { getShutdownConfig, type EnvironmentVariables } from "./env.js"
 import { boolOpt } from "./utils/options.js"
-import type { GlobalOptions } from "./types.js"
+import type { GlobalOptions, ShutdownConfig } from "./types.js"
 import { hostname } from "node:os"
 import { pid } from "node:process"
+import { parseMs } from "./utils/time.js"
 
 const { stdout, stderr, stdin, } = process
 
@@ -24,6 +25,8 @@ function printHelp(stream: Writable): void {
 	stream.write('  --[no-]log-pretty-sync         Force synchronous (slower) logging        LOG_PRETTY_SYNC        false\n')
 	stream.write('  --[no-]log-pretty-color        Colorize log output                       LOG_PRETTY_COLOR       true\n')
 	stream.write('  --[no-]log-pretty-single-line  Single line log output                    LOG_PRETTY_SINGLE_LINE false\n')
+	stream.write('  --alert-throw-level <level>    Throw alerts at this level                ALERT_THROW_LEVEL      (none)\n')
+	stream.write('  --countdown <duration>         Grace period before executing command     COUNTDOWN  10s\n')
 	stream.write('\n')
 	stream.write('Commands\n')
 	stream.write('  api       Start the API server\n')
@@ -36,16 +39,18 @@ function printVersion(stream: Writable): void {
 
 let exitAfterDrain = false
 let logJson = false
-async function main(argv: string[], env: EnvironmentVariables): Promise<number> {
+async function main(mainFile: string, argv: string[], env: EnvironmentVariables): Promise<number> {
 	let logLevel = env.LOG_LEVEL || 'info'
 	let logFormatOpt = env.LOG_FORMAT || 'PRETTY'
 	let logPrettySyncOpt: string | boolean = env.LOG_PRETTY_SYNC || 'false'
 	let logPrettyColorOpt: string | boolean = env.LOG_PRETTY_COLOR || 'true'
 	let logPrettySingleLineOpt: string | boolean = env.LOG_PRETTY_SINGLE_LINE || 'true'
-	let cmd: undefined | string
+	let countdownOpt = env.COUNTDOWN || '10s'
+	let cmd: undefined | string = env.COMMAND
 
 	let parsedArgs = false
 	let argi = 0
+	let lastArgIsCommand = false
 	while (!parsedArgs && argi < argv.length) {
 		let eqidx: number
 		if (argv[argi].startsWith('-') && (eqidx = argv[argi].indexOf('=')) !== -1) {
@@ -83,18 +88,43 @@ async function main(argv: string[], env: EnvironmentVariables): Promise<number> 
 			case '--log-pretty-single-line':
 				logPrettySingleLineOpt = true
 				break
+			case '--countdown':
+				countdownOpt = argv[++argi] || countdownOpt
+				break
 			default:
-				if (argv[argi].startsWith('-')) {
+				if (!argv[argi].startsWith('-')) {
+					cmd = argv[argi]
+					parsedArgs = true
+					lastArgIsCommand = true
+				} else {
 					printHelp(stderr)
 					stderr.write('\n')
 					stderr.write(`Unknown option: ${argv[argi]}\n`)
 					return 1
-				} else {
-					cmd = argv[argi]
-					parsedArgs = true
 				}
 		}
 		argi++
+	}
+
+	const mainArgv = argv.slice(0, lastArgIsCommand ? argi - 1 : argi)
+
+	// Used when we're using clusters / spawning processes so we can use CTRL-C to send
+	// SIGINT to the primary process and ignore it in the rest of the process group (the workers).
+	// The primary sends SIGTERM instead to the child processes to control their lifecycle.
+	// Used in the API's cluster mode, in the "all" command's handling of child processes
+	// and in the future probably in the "jobs" command.
+	const ignoreSigints = boolOpt(process.env.IGNORE_SIGINTS || 'false')
+	if (ignoreSigints === undefined) {
+		printHelp(stderr)
+		stderr.write('\n')
+		stderr.write(`Invalid value for IGNORE_SIGINTS: ${process.env.IGNORE_SIGINTS}\n`)
+		return 1
+	}
+
+	if (ignoreSigints) {
+		process.on('SIGINT', function() {
+			logger.trace('Ignoring SIGINT')
+		})
 	}
 
 	const logPrettySync = boolOpt(logPrettySyncOpt)
@@ -142,6 +172,20 @@ async function main(argv: string[], env: EnvironmentVariables): Promise<number> 
 	}
 	logger.level = logLevel
 
+	let boundName = false
+	if (env.LOG_BINDINGS) {
+		try {
+			const bindings = JSON.parse(env.LOG_BINDINGS)
+			logger.setBindings(bindings)
+			if (bindings.name) boundName = true
+		} catch (err) {
+			printHelp(stderr)
+			stderr.write('\n')
+			stderr.write(`Invalid log bindings: ${String(err)}\n`)
+			return 1
+		}
+	}
+
 	if (!cmd) {
 		printHelp(stderr)
 		stderr.write('\n')
@@ -149,12 +193,36 @@ async function main(argv: string[], env: EnvironmentVariables): Promise<number> 
 		return 1
 	}
 
+	const countdown = parseMs(countdownOpt)
+	if (countdown === undefined) {
+		printHelp(stderr)
+		stderr.write('\n')
+		stderr.write(`Invalid countdown duration: ${countdownOpt}\n`)
+		return 1
+	}
+
+	let shutdownConfig: ShutdownConfig = getShutdownConfig(env)
+	try {
+		shutdownConfig = getShutdownConfig(env)
+	} catch (err) {
+		printHelp(stderr)
+		stderr.write('\n')
+		stderr.write(`Invalid shutdown options: ${String(err)}\n`)
+		return 1
+	}
+
 	const globalOpts: GlobalOptions = {
 		logger,
 		argv: argv.slice(argi),
-		stderr,
 		stdin,
 		stdout,
+		stderr,
+		nodeBinary: process.execPath,
+		nodeArgv: process.execArgv,
+		mainFile,
+		mainArgv,
+		countdown,
+		shutdownConfig,
 		env,
 	}
 
@@ -185,7 +253,7 @@ async function main(argv: string[], env: EnvironmentVariables): Promise<number> 
 	return 0
 }
 
-process.exitCode = await main(process.argv.slice(2), process.env)
+process.exitCode = await main(process.argv[1], process.argv.slice(2), process.env)
 
 // Timeout if we take too long to close, possibly due to open resources
 setTimeout(function() {

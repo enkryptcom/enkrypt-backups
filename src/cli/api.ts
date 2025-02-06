@@ -1,8 +1,8 @@
 import type { Writable } from "node:stream"
-import type { GlobalOptions } from "../types.js"
+import type { ClusterConfig, GlobalOptions, PrometheusConfig } from "../types.js"
 import { boolOpt } from "../utils/options.js"
-import { getApiClusterConfig, getApiHttpConfig, getApiPrometheusConfig, getStorageConfig, printApiClusterConfig, printApiHttpConfig, printApiPrometheusConfig, printStorageConfig, type ApiClusterConfig, type ApiHttpConfig, type ApiPrometheusConfig, type StorageConfig } from "../env.js"
-import { api } from "../commands/api.js"
+import { getApiClusterConfig, getApiHttpConfig, getApiPrometheusConfig, getStorageConfig, printApiClusterConfig, printApiHttpConfig, printApiPrometheusConfig, printStorageConfig, type ApiHttpConfig, type StorageConfig } from "../env.js"
+import { apiCommand } from "../commands/api/command.js"
 
 function printHelp(stream: Writable): void {
 	stream.write(`Usage: node [options] api [options]\n`)
@@ -14,7 +14,7 @@ function printHelp(stream: Writable): void {
 }
 
 export default async function serveMain(globalOpts: GlobalOptions): Promise<number> {
-	const { argv, env, stdout, stderr, logger, } = globalOpts
+	const { argv, env, stdout, stderr, logger, shutdownConfig, } = globalOpts
 
 	let configCheckOpt = 'false'
 	let standalone: undefined | boolean
@@ -54,8 +54,8 @@ export default async function serveMain(globalOpts: GlobalOptions): Promise<numb
 		argi++
 	}
 
-	const configCheck = boolOpt(configCheckOpt)
-	if (configCheck === undefined) {
+	const checkConfig = boolOpt(configCheckOpt)
+	if (checkConfig === undefined) {
 		printHelp(stderr)
 		stderr.write('\n')
 		stderr.write(`Invalid config-check option: ${configCheckOpt}\n`)
@@ -84,7 +84,7 @@ export default async function serveMain(globalOpts: GlobalOptions): Promise<numb
 		return 1
 	}
 
-	let apiClusterConfig: ApiClusterConfig
+	let apiClusterConfig: ClusterConfig
 	try {
 		apiClusterConfig = getApiClusterConfig(env, { standalone })
 	} catch (err) {
@@ -95,7 +95,7 @@ export default async function serveMain(globalOpts: GlobalOptions): Promise<numb
 		return 1
 	}
 
-	let apiPrometheusConfig: ApiPrometheusConfig
+	let apiPrometheusConfig: PrometheusConfig
 	try {
 		apiPrometheusConfig = getApiPrometheusConfig(env)
 	} catch (err) {
@@ -115,13 +115,14 @@ export default async function serveMain(globalOpts: GlobalOptions): Promise<numb
 	}
 
 
-	await api({
+	await apiCommand({
 		logger,
-		configCheck,
+		checkConfig,
 		httpConfig: apiHttpConfig,
 		clusterConfig: apiClusterConfig,
 		prometheusConfig: apiPrometheusConfig,
 		storageConfig,
+		shutdownConfig,
 	})
 
 	return 0

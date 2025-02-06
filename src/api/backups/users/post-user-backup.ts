@@ -2,12 +2,11 @@ import type { RequestHandler } from "express"
 import type { operations } from "../../../openapi.js"
 import { HttpError, HttpStatus } from "../../../utils/http.js"
 import { bufferToByteString, bytesToByteString, byteStringToBytes, parseByteString, parseUUID } from "../../../utils/coersion.js"
-import type { Validators } from "../../../lib/api/validation.js"
 import { createHash } from "node:crypto"
 import type { Backup, FileStorage } from "../../../storage/interface.js"
-import { ErrorMessage } from "../../../lib/api/errors.js"
 import { ecrecover, fromRpcSig, hashPersonalMessage } from "@ethereumjs/util"
 import { ERROR_MESSAGE } from "../../../errors.js"
+import type { Validators } from "../../../validation.js"
 
 type Params = operations['CreateUserBackup']['parameters']['path']
 type ReqBody = NonNullable<operations['CreateUserBackup']['requestBody']>['content']['application/json']
@@ -68,7 +67,7 @@ export default function createCreateUserBackupHandler(opts: {
 			const messagePubkey = bytesToByteString(ecrecover(messageHash, esig.v, esig.r, esig.s))
 
 			if (pubkey !== messagePubkey) {
-				throw new HttpError(HttpStatus.BadRequest, ErrorMessage.SIGNATURE_DOES_NOT_MATCH_PUBKEY)
+				throw new HttpError(HttpStatus.BadRequest, ERROR_MESSAGE.SIGNATURE_DOES_NOT_MATCH_PUBKEY)
 			}
 
 			const backup: Backup = {

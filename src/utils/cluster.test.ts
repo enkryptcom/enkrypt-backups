@@ -1,9 +1,9 @@
 import { describe, it } from "node:test";
 import { strictEqual } from "node:assert/strict";
-import { getDesiredWorkerCount } from "./run-cluster-primary.js";
-import { parseBytes } from "../../utils/bytes.js";
+import { parseBytes } from "../utils/bytes.js";
+import { getDesiredWorkerCount } from "./cluster.js";
 
-describe('api command', function() {
+describe('cluster', function() {
 	it('getDesiredWorkerCount', function() {
 		it('should work', function() {
 			strictEqual(getDesiredWorkerCount({

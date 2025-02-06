@@ -1,9 +1,9 @@
 import type { ErrorRequestHandler } from "express"
 import { HttpError, HttpStatus } from "../utils/http.js"
-import type { ApiMetrics } from "../lib/api/types.js"
+import type { HttpMetrics } from "../utils/http-metrics.js"
 
 export function errorHandlerMiddleware(opts: {
-	metrics: undefined | ApiMetrics,
+	metrics: undefined | HttpMetrics,
 	debugErrors: boolean,
 }): ErrorRequestHandler {
 	const { metrics, debugErrors, } = opts

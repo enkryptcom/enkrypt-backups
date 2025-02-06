@@ -1,6 +1,5 @@
 import { Server } from 'node:http';
-import EventEmitter from 'node:events';
-import type { Context } from '../types.js';
+import type { Logger } from 'pino';
 
 export const HttpStatus = {
 	// 1xx
@@ -199,7 +198,8 @@ const HttpServerOptionsDefaults = {
 	HARD_SHUTDOWN_TIMEOUT: 15_000,
 } as const
 
-export type HttpServerOptions = {
+export type RunHttpServerOptions = {
+	logger: Logger,
 	/** @default 5_000 */
 	listeningTimeout?: number,
 	/** @default 15_000 */
@@ -208,165 +208,138 @@ export type HttpServerOptions = {
 	hardShutdownTimeout?: number,
 	hostname: string,
 	port: number,
-	server: Server,
-	controller?: EventEmitter<HttpServerControllerEvents>,
+	httpServer: Server,
+	gracefulShutdownSignal: AbortSignal,
+	acceleratedShutdownSignal: AbortSignal,
 }
 
-export async function runHttpServer(ctx: Context, options: HttpServerOptions): Promise<void> {
+export async function runHttpServer(opts: RunHttpServerOptions): Promise<void> {
 	const {
+		logger,
 		listeningTimeout = HttpServerOptionsDefaults.LISTENING_TIMEOUT,
 		softShutdownTimeout = HttpServerOptionsDefaults.SOFT_SHUTDOWN_TIMEOUT,
 		hardShutdownTimeout = HttpServerOptionsDefaults.HARD_SHUTDOWN_TIMEOUT,
 		port,
 		hostname,
-		server,
-		controller,
-	} = options
+		httpServer,
+		gracefulShutdownSignal,
+		acceleratedShutdownSignal,
+	} = opts
 
-	let _stop: boolean = false
-	function _onBeginGracefulShutdown() {
-		_stop = true
-	}
-	function _onBeginForcefulShutdown() {
-		_stop = true
+	if (gracefulShutdownSignal.aborted || acceleratedShutdownSignal.aborted) {
+		logger.warn('Skipping HTTP server start due to ongoing shutdown')
+		return
 	}
 
-	controller?.on('beginGracefulShutdown', _onBeginGracefulShutdown)
-	controller?.on('beginForcefulShutdown', _onBeginForcefulShutdown)
-	try {
-		// Start the HTTP server
-		const cont = await new Promise<boolean>(function(res, rej) {
-			function onTimeout() {
-				ctx.logger.warn(`HTTP server timed out waiting to start`)
-				cleanup()
-				server.close()
-				server.closeIdleConnections()
-				server.closeAllConnections()
-				rej(new Error('HTTP server timed out waiting to start'))
-			}
-			function onAbort() {
-				ctx.logger.warn(`HTTP server closing due to execution context aborted`)
-				cleanup()
-				server.close()
-				server.closeIdleConnections()
-				server.closeAllConnections()
-				rej(ctx.signal.reason)
-			}
-			function onListening() {
-				ctx.logger.info({ hostname, port }, `HTTP server listening on ${hostname}:${port}`)
-				cleanup()
-				res(true)
-			}
-			function onBeginGracefulShutdown() {
-				ctx.logger.warn('HTTP server beginning graceful shutdown before server is listening')
-				cleanup()
-				server.close()
-				server.closeIdleConnections()
-				server.closeAllConnections()
-				res(false)
-			}
-			function onBeginForcefulShutdown() {
-				ctx.logger.warn('HTTP server forcing shutdown before server is listening')
-				cleanup()
-				server.close()
-				server.closeIdleConnections()
-				server.closeAllConnections()
-				res(false)
-			}
-			function onError(err: Error) {
-				ctx.logger.warn({ err }, 'HTTP server error before server is listening')
-				cleanup()
-				rej(err)
-			}
-			function cleanup() {
-				clearTimeout(timeout)
-				ctx.signal.removeEventListener('abort', onAbort)
-				server.off('listening', onListening)
-				server.off('error', onError)
-				controller?.off('beginGracefulShutdown', onBeginGracefulShutdown)
-				controller?.off('beginForcefulShutdown', onBeginForcefulShutdown)
-			}
-			const timeout = setTimeout(onTimeout, listeningTimeout)
-			ctx.signal.addEventListener('abort', onAbort)
-			server.on('listening', onListening)
-			server.on('error', onError)
-			controller?.on('beginGracefulShutdown', onBeginGracefulShutdown)
-			controller?.on('beginForcefulShutdown', onBeginForcefulShutdown)
-			server.listen(port, hostname)
-			if (ctx.signal.aborted) {
-				onAbort()
-			}
-		})
-
-		if (!cont || _stop) {
-			return
+	// Start the HTTP server
+	await new Promise<void>(function(res, rej) {
+		function onTimeout() {
+			logger.warn(`HTTP server timed out waiting to start`)
+			cleanup()
+			httpServer.close()
+			httpServer.closeIdleConnections()
+			httpServer.closeAllConnections()
+			rej(new Error('HTTP server timed out waiting to start'))
 		}
+		function onListening() {
+			logger.info({ hostname, port }, `HTTP server listening on ${hostname}:${port}`)
+			cleanup()
+			res()
+		}
+		function gracefulShutdown() {
+			logger.warn('HTTP server beginning graceful shutdown before server is listening')
+			cleanup()
+			httpServer.close()
+			httpServer.closeIdleConnections()
+			httpServer.closeAllConnections()
+			// The server will be immediately re-closed in the next new Promise scope
+			// wherein we wait for the "close" event to be emitted with timeouts
+			res()
+		}
+		function acceleratedShutdown() {
+			logger.warn('HTTP server beginning accelerated shutdown before server is listening')
+			cleanup()
+			httpServer.close()
+			httpServer.closeIdleConnections()
+			httpServer.closeAllConnections()
+			// The server will be immediately re-closed in the next new Promise scope
+			// wherein we wait for the "close" event to be emitted with timeouts
+			res()
+		}
+		function onError(err: Error) {
+			logger.warn({ err }, `HTTP server error before server is listening: ${String(err)}`)
+			cleanup()
+			rej(err)
+		}
+		function cleanup() {
+			clearTimeout(timeout)
+			httpServer.off('listening', onListening)
+			httpServer.off('error', onError)
+			gracefulShutdownSignal.removeEventListener('abort', gracefulShutdown)
+			acceleratedShutdownSignal.removeEventListener('abort', acceleratedShutdown)
+		}
+		const timeout = setTimeout(onTimeout, listeningTimeout)
+		httpServer.on('listening', onListening)
+		httpServer.on('error', onError)
+		gracefulShutdownSignal.addEventListener('abort', gracefulShutdown)
+		acceleratedShutdownSignal.addEventListener('abort', acceleratedShutdown)
+		httpServer.listen(port, hostname)
+	})
 
-		// Wait for the HTTP server to stop
-		await new Promise<void>(function(res, rej) {
-			let errref: undefined | { err: Error }
-			function onAbort() {
-				ctx.logger.warn('HTTP server closing due to execution context aborted')
-				cleanup()
-				server.closeIdleConnections()
-				server.closeAllConnections()
-				rej(ctx.signal.reason)
-			}
-			function onBeginGracefulShutdown() {
-				ctx.logger.warn('HTTP server beginning graceful shutdown')
-				server.close()
-				server.closeIdleConnections()
-				softTimeout = setTimeout(onSoftTimeout, softShutdownTimeout)
-				hardTimeout = setTimeout(onHardTimeout, hardShutdownTimeout)
-			}
-			function onBeginForcefulShutdown() {
-				ctx.logger.warn('HTTP server forcing shutdown')
-				cleanup()
-				server.close()
-				server.closeIdleConnections()
-				server.closeAllConnections()
-				errref = { err: new Error('Forced shutdown') }
-			}
-			function onError(err: Error) {
-				ctx.logger.error({ err }, 'HTTP Server error')
-				errref = { err }
-			}
-			function onClose() {
-				ctx.logger.info('HTTP server closed')
-				cleanup()
-				if (errref) rej(errref.err)
-				else res()
-			}
-			function onSoftTimeout() {
-				ctx.logger.warn('HTTP server soft timeout reached, forcefully closing connections')
-				server.closeIdleConnections()
-				server.closeAllConnections()
-			}
-			function onHardTimeout() {
-				ctx.logger.warn('HTTP server hard timeout reached, forcefully closing server')
-				cleanup()
-				rej(new Error(`HTTP server timed out waiting for server to close`))
-			}
-			function cleanup() {
-				clearTimeout(softTimeout)
-				clearTimeout(hardTimeout)
-				ctx.signal.removeEventListener('abort', onAbort)
-				controller?.off('beginGracefulShutdown', onBeginGracefulShutdown)
-				controller?.off('beginForcefulShutdown', onBeginForcefulShutdown)
-				server.off('close', onClose)
-				server.off('error', onError)
-			}
-			let softTimeout: undefined | ReturnType<typeof setTimeout>
-			let hardTimeout: undefined | ReturnType<typeof setTimeout>
-			ctx.signal.addEventListener('abort', onAbort)
-			controller?.on('beginGracefulShutdown', onBeginGracefulShutdown)
-			controller?.on('beginForcefulShutdown', onBeginForcefulShutdown)
-			server.on('close', onClose)
-			server.on('error', onError)
-		})
-	} finally {
-		controller?.off('beginGracefulShutdown', _onBeginGracefulShutdown)
-		controller?.off('beginForcefulShutdown', _onBeginForcefulShutdown)
-	}
+	// Promise that resolves (or rejects) when the HTTP server closes
+	await new Promise<void>(function(res, rej) {
+		let errRef: undefined | { err: Error }
+		function gracefulShutdown() {
+			logger.debug('HTTP server beginning graceful shutdown')
+			httpServer.close()
+			httpServer.closeIdleConnections()
+			if (softTimeout == null) softTimeout = setTimeout(onSoftTimeout, softShutdownTimeout)
+			if (hardTimeout == null) hardTimeout = setTimeout(onHardTimeout, hardShutdownTimeout)
+		}
+		function acceleratedShutdown() {
+			logger.debug('HTTP server beginning accelerated shutdown')
+			httpServer.close()
+			httpServer.closeIdleConnections()
+			httpServer.closeAllConnections()
+			if (softTimeout == null) softTimeout = setTimeout(onSoftTimeout, softShutdownTimeout)
+			if (hardTimeout == null) hardTimeout = setTimeout(onHardTimeout, hardShutdownTimeout)
+		}
+		function onError(err: Error) {
+			logger.error({ err }, `HTTP Server error: ${String(err)}`)
+			errRef = { err }
+		}
+		function onClose() {
+			logger.info('HTTP server closed')
+			cleanup()
+			if (errRef) rej(errRef.err)
+			else res()
+		}
+		function onSoftTimeout() {
+			logger.warn('HTTP server soft timeout reached, closing connections')
+			httpServer.closeIdleConnections()
+			httpServer.closeAllConnections()
+		}
+		function onHardTimeout() {
+			logger.warn('HTTP server hard timeout reached, closing server')
+			cleanup()
+			rej(new Error(`HTTP server timed out waiting for server to close`))
+		}
+		function cleanup() {
+			clearTimeout(softTimeout)
+			clearTimeout(hardTimeout)
+			gracefulShutdownSignal.removeEventListener('abort', gracefulShutdown)
+			acceleratedShutdownSignal.removeEventListener('abort', acceleratedShutdown)
+			httpServer.off('close', onClose)
+			httpServer.off('error', onError)
+		}
+		let softTimeout: undefined | ReturnType<typeof setTimeout>
+		let hardTimeout: undefined | ReturnType<typeof setTimeout>
+		gracefulShutdownSignal.addEventListener('abort', gracefulShutdown)
+		acceleratedShutdownSignal.addEventListener('abort', acceleratedShutdown)
+		httpServer.on('close', onClose)
+		httpServer.on('error', onError)
+		if (acceleratedShutdownSignal.aborted) acceleratedShutdown()
+		else if (gracefulShutdownSignal.aborted) gracefulShutdown()
+	})
 }
 

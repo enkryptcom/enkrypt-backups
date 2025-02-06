@@ -3,12 +3,11 @@ import { initMiddleware } from '../middleware/init.js';
 import useCompression from 'compression'
 import type { Disposer } from './disposer.js';
 import type { Logger } from 'pino';
-import { HttpError, HttpStatus, runHttpServer, type HttpServerControllerEvents } from './http.js';
+import { HttpError, HttpStatus, runHttpServer, } from './http.js';
 import type { AggregatorRegistry, PrometheusContentType, Registry } from 'prom-client';
-import { errorHandlerMiddleware } from '../middleware/error.js';
 import { createServer, Server } from 'node:http';
-import EventEmitter from 'node:events';
-import type { Context } from '../types.js';
+import { errorHandlerMiddleware } from '../middleware/error.js';
+import { createHttpMetrics } from './http-metrics.js';
 
 type RegistryContext =
 	| { type: 'standalone', instance: Registry }
@@ -39,9 +38,15 @@ export function createPrometheusExporterHttpServer(disposer: Disposer, opts: {
 	app.disable('x-powered-by')
 	app.set('trust proxy', false)
 
+	const selfMetrics = createHttpMetrics({
+		prefix: 'prom_exporter_',
+		registry: registry.instance,
+	})
+
 	app.use(initMiddleware({
-		disposer,
 		logger,
+		disposer,
+		metrics: selfMetrics,
 		logReqHeaders: true,
 		logResHeaders: true,
 		reqSoftTimeoutMs: 15_000,
@@ -89,7 +94,7 @@ export function createPrometheusExporterHttpServer(disposer: Disposer, opts: {
 
 	app.use(errorHandlerMiddleware({
 		debugErrors: false,
-		metrics: undefined,
+		metrics: selfMetrics,
 	}))
 
 	server.on('request', app)
@@ -133,23 +138,18 @@ export function runPrometheusExporterHttpServer(disposer: Disposer, opts: {
 	const exporterHttpServerRef: { value: Server } = { value: create(), }
 	const exporterPromiseRef: { value: Promise<void>; } = { value: Promise.resolve(), }
 
-	const controller = new EventEmitter<HttpServerControllerEvents>()
-	/**
-	 * Effectively a noop aborter (we never abort it), we don't use it because it
-	 * doesn't let us distinguish between a clean and dirty shutdown
-	 *
-	 * (We use the controller to gracefully shut down the server)
-	 */
-	const aborter = new AbortController()
 	let stopping = false
-	const ctx: Context = { logger, signal: aborter.signal, }
+
+	const gracefulShutdownAborter = new AbortController()
+	const acceleratedShutdownAborter = new AbortController()
 
 	// When the parent context is disposed of, shut down the Prometheus exporter server
 	disposer.defer(async function() {
 		stopping = true
-		ctx.logger.trace('Stopping prometheus exporter')
+		logger.trace('Stopping prometheus exporter')
+		gracefulShutdownAborter.abort(new Error('Disposing'))
+		acceleratedShutdownAborter.abort(new Error('Disposing'))
 		clearTimeout(restartExporterTimeout)
-		controller.emit('beginGracefulShutdown')
 		await exporterPromiseRef.value
 	})
 
@@ -165,7 +165,7 @@ export function runPrometheusExporterHttpServer(disposer: Disposer, opts: {
 	function onExporterDoneError(this: Server, err: Error) {
 		// Nothing to do
 		if (stopping) {
-			ctx.logger.error({
+			logger.error({
 				err,
 				restartExporterRetry,
 			}, `Prometheus exporter crashed, restarting in ${restartExporterBackoff[restartExporterRetry]}ms`)
@@ -175,7 +175,7 @@ export function runPrometheusExporterHttpServer(disposer: Disposer, opts: {
 		// Queue restart of the exporter server
 		restartExporterRetry = Math.min(restartExporterRetry + 1, restartExporterBackoff.length - 1)
 
-		ctx.logger.error({
+		logger.error({
 			err,
 			restartExporterRetry,
 		}, `Prometheus exporter crashed, restarting in ${restartExporterBackoff[restartExporterRetry]}ms`)
@@ -192,7 +192,14 @@ export function runPrometheusExporterHttpServer(disposer: Disposer, opts: {
 	function run() {
 		if (stopping) return
 		const server = exporterHttpServerRef.value
-		const promise = runHttpServer(ctx, { hostname: host, port, server, controller, })
+		const promise = runHttpServer({
+			logger,
+			hostname: host,
+			port,
+			httpServer: server,
+			gracefulShutdownSignal: gracefulShutdownAborter.signal,
+			acceleratedShutdownSignal: acceleratedShutdownAborter.signal,
+		})
 		// We listen to the server promise in-case it rejects we don't want to crash the process
 		// but also so we can restart the prometheus exporter if it fails
 		promise.catch(onExporterDoneError.bind(server))
@@ -201,3 +208,4 @@ export function runPrometheusExporterHttpServer(disposer: Disposer, opts: {
 
 	run()
 }
+

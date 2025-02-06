@@ -3,6 +3,7 @@ import { boolOpt, bytesOpt, intOpt, msOpt, rateOpt } from './utils/options.js'
 import type { Logger } from 'pino'
 import { fmtDurationPrecise } from './utils/time.js'
 import { fmtBytes, } from './utils/bytes.js'
+import type { ClusterConfig, PrometheusConfig, ShutdownConfig } from './types.js'
 
 declare global {
 	namespace NodeJS {
@@ -13,6 +14,8 @@ declare global {
 export type EnvironmentVariables = {
 	/** Set programatically to forcibly avoid printing options (used in api cluster mode) */
 	PRINT_OPTIONS?: string
+	/** Set programatically for simpler managing of child process lifecycles */
+	IGNORE_SIGINTS?: string,
 
 	TZ?: string
 
@@ -21,8 +24,16 @@ export type EnvironmentVariables = {
 	LOG_PRETTY_SYNC?: string
 	LOG_PRETTY_COLOR?: string
 	LOG_PRETTY_SINGLE_LINE?: string
+	LOG_BINDINGS?: string
+
+	COUNTDOWN?: string
+	COMMAND?: string
 
 	DEBUG?: string
+
+	SHUTDOWN_SIGNALS?: string,
+	SHUTDOWN_SIGNAL_COUNT_ACCELERATED?: string
+	SHUTDOWN_SIGNAL_COUNT_IMMEDIATE?: string
 
 	STORAGE_DRIVER?: string
 
@@ -82,6 +93,12 @@ export type EnvironmentVariables = {
 }
 
 type KeyOf<T, K extends keyof T> = K
+
+export type ShutdownVariable = KeyOf<EnvironmentVariables,
+	| 'SHUTDOWN_SIGNALS'
+	| 'SHUTDOWN_SIGNAL_COUNT_ACCELERATED'
+	| 'SHUTDOWN_SIGNAL_COUNT_IMMEDIATE'
+>
 
 export type StorageEnvironmentVariable = KeyOf<
 	EnvironmentVariables,
@@ -202,23 +219,61 @@ export type ApiHttpConfig = {
 	extraRandomErrorRate: number
 }
 
-export type ApiClusterConfig = {
-	standalone: boolean
-	minWorkers: number
-	maxWorkers: number
-	estimatedMemoryPrimaryBytes: number,
-	estimatedMemoryWorkerBytes: number,
-	estimatedMemoryMaxBytes: number,
-	memoryReservedBytes: number,
-	addWorkerDebounceMs: number,
-}
+export function getShutdownConfig(env: Pick<EnvironmentVariables, ShutdownVariable>): ShutdownConfig {
+	const {
+		SHUTDOWN_SIGNALS,
+		SHUTDOWN_SIGNAL_COUNT_ACCELERATED,
+		SHUTDOWN_SIGNAL_COUNT_IMMEDIATE,
+	} = env
 
-export type ApiPrometheusConfig = {
-	enabled: boolean,
-	logLevel: string,
-	host: string
-	port: number
-	compression: boolean,
+	let shutdownSignals: string[]
+	const shutdownSignalsLc = SHUTDOWN_SIGNALS?.toLowerCase()
+	if (shutdownSignalsLc === 'none') {
+		shutdownSignals = []
+	} else if (shutdownSignalsLc) {
+		shutdownSignals = shutdownSignalsLc.split(',').map((signal) => signal.toUpperCase())
+	} else {
+		// Defaults
+		shutdownSignals = ['SIGTERM', 'SIGINT']
+	}
+
+	for (let i = 0, len = shutdownSignals.length; i < len; i++) {
+		switch (shutdownSignals[i]) {
+			// Valid signals
+			case 'SIGTERM':
+			case 'SIGINT':
+			case 'SIGHUP':
+				break;
+			default:
+				throw new Error(`Invalid shutdown signal: ${shutdownSignals[i]}`)
+		}
+	}
+
+	let acceleratedShutdownSignalCount: number = 5
+	if (SHUTDOWN_SIGNAL_COUNT_ACCELERATED) {
+		const _acceleratedShutdownSignalCount = intOpt(SHUTDOWN_SIGNAL_COUNT_ACCELERATED)
+		if (_acceleratedShutdownSignalCount === undefined || _acceleratedShutdownSignalCount < 0) {
+			throw new Error(`Invalid environment variable SHUTDOWN_SIGNAL_COUNT_ACCELERATED: ${SHUTDOWN_SIGNAL_COUNT_ACCELERATED}`)
+		}
+		acceleratedShutdownSignalCount = _acceleratedShutdownSignalCount
+	}
+
+	let immediateShutdownSignalCount: number = 10
+	if (SHUTDOWN_SIGNAL_COUNT_IMMEDIATE) {
+		const _immediateShutdownSignalCount = intOpt(SHUTDOWN_SIGNAL_COUNT_IMMEDIATE)
+		if (_immediateShutdownSignalCount === undefined || _immediateShutdownSignalCount < 0) {
+			throw new Error(`Invalid environment variable SHUTDOWN_SIGNAL_COUNT_IMMEDIATE: ${SHUTDOWN_SIGNAL_COUNT_IMMEDIATE}`)
+		}
+		immediateShutdownSignalCount = _immediateShutdownSignalCount
+	}
+
+	const opts: ShutdownConfig = {
+		shutdownSignals: shutdownSignals as NodeJS.Signals[],
+		acceleratedShutdownSignalCount,
+		immediateShutdownSignalCount,
+	}
+
+	return opts
 }
 
 export function getStorageConfig(
@@ -509,7 +564,7 @@ export function getApiHttpConfig(
 export function getApiClusterConfig(
 	env: Pick<EnvironmentVariables, ApiClusterEnvironmentVariable>,
 	force?: { standalone?: boolean, }
-): ApiClusterConfig {
+): ClusterConfig {
 	const {
 		API_CLUSTER_STANDALONE,
 		API_CLUSTER_MIN_WORKERS,
@@ -568,7 +623,7 @@ export function getApiClusterConfig(
 		throw new Error(`Invalid environment variable API_CLUSTER_ADD_WORKER_DEBOUNCE: ${API_CLUSTER_ADD_WORKER_DEBOUNCE}`)
 	}
 
-	const config: ApiClusterConfig = {
+	const config: ClusterConfig = {
 		standalone,
 		minWorkers,
 		maxWorkers,
@@ -584,7 +639,7 @@ export function getApiClusterConfig(
 
 export function getApiPrometheusConfig(
 	env: Pick<EnvironmentVariables, ApiPrometheusEnvironmentVariable>,
-): ApiPrometheusConfig {
+): PrometheusConfig {
 	const {
 		API_PROMETHEUS_ENABLED,
 		API_PROMETHEUS_HTTP_LOG_LEVEL,
@@ -612,7 +667,7 @@ export function getApiPrometheusConfig(
 		throw new Error(`Invalid environment variable API_PROMETHEUS_HTTP_COMPRESSION: ${API_PROMETHEUS_HTTP_COMPRESSION}`)
 	}
 
-	const config: ApiPrometheusConfig = {
+	const config: PrometheusConfig = {
 		enabled,
 		logLevel,
 		host,
@@ -683,7 +738,7 @@ export function printApiHttpConfig(prefix: string, logger: Logger, apiHttpConfig
 	}
 }
 
-export function printApiClusterConfig(prefix: string, logger: Logger, apiClusterConfig: undefined | ApiClusterConfig): void {
+export function printApiClusterConfig(prefix: string, logger: Logger, apiClusterConfig: undefined | ClusterConfig): void {
 	logger.info(`${prefix}API cluster settings:`)
 	if (apiClusterConfig) {
 		logger.info(`${prefix}  standalone:                   ${apiClusterConfig.standalone}`)
@@ -707,7 +762,7 @@ export function printApiClusterConfig(prefix: string, logger: Logger, apiCluster
 	}
 }
 
-export function printApiPrometheusConfig(prefix: string, logger: Logger, apiPrometheusConfig: undefined | ApiPrometheusConfig): void {
+export function printApiPrometheusConfig(prefix: string, logger: Logger, apiPrometheusConfig: undefined | PrometheusConfig): void {
 	logger.info(`${prefix}Api Prometheus settings:`)
 	if (apiPrometheusConfig) {
 		logger.info(`${prefix}  enabled:      ${apiPrometheusConfig.enabled}`)

@@ -5,6 +5,12 @@ export type GlobalOptions = {
 	stdin: NodeJS.ReadStream & { fd: 0 }
 	stdout: NodeJS.WriteStream & { fd: 1 }
 	stderr: NodeJS.WriteStream & { fd: 2 }
+	nodeBinary: string,
+	nodeArgv: string[],
+	mainFile: string,
+	mainArgv: string[],
+	countdown: number
+	shutdownConfig: ShutdownConfig
 	env: EnvironmentVariables
 	logger: Logger
 	argv: string[]
@@ -15,6 +21,30 @@ export type Context = {
 	signal: AbortSignal
 }
 
+export type ShutdownConfig = {
+	shutdownSignals: NodeJS.Signals[],
+	acceleratedShutdownSignalCount: number,
+	immediateShutdownSignalCount: number,
+}
+
+export type ClusterConfig = {
+	standalone: boolean
+	minWorkers: number
+	maxWorkers: number
+	estimatedMemoryPrimaryBytes: number,
+	estimatedMemoryWorkerBytes: number,
+	estimatedMemoryMaxBytes: number,
+	memoryReservedBytes: number,
+	addWorkerDebounceMs: number,
+}
+
+export type PrometheusConfig = {
+	enabled: boolean,
+	logLevel: string,
+	host: string
+	port: number
+	compression: boolean,
+}
 
 /** Lowercase 0x prefixed hex string */
 export type Hex = `0x${string}`

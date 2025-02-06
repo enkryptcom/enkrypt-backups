@@ -1,3 +1,23 @@
+## Upcoming
+
+- Cleanup & restructure codebase
+- Improve graceful shutdown behavior
+- Upgrade NodeJS version from v23.6.0 to v23.7.0
+- Upgrade NPM dependencies
+
+```
+-  "@types/node": "22.10.5",
++  "@types/node": "22.13.1",
+-  "openapi-typescript": "7.5.2",
++  "openapi-typescript": "7.6.1",
+-  "ethereum-cryptography": "3.0.0",
++  "ethereum-cryptography": "3.1.0",
+-  "@smithy/node-http-handler": "^4.0.1",
++  "@smithy/node-http-handler": "^4.0.2",
+-  "@aws-sdk/client-s3": "3.726.0",
++  "@aws-sdk/client-s3": "3.741.0",
+```
+
 ## Release 0.1.5 (2025-02-05)
 
 - Require signature to get user backups

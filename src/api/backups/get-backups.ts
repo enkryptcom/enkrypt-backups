@@ -2,12 +2,11 @@ import type { RequestHandler } from "express"
 import type { operations } from "../../openapi.js"
 import { HttpError, HttpStatus } from "../../utils/http.js"
 import { bufferToByteString, bytesToByteString, byteStringToBytes, parseByteString } from "../../utils/coersion.js"
-import type { Validators } from "../../lib/api/validation.js"
 import { createHash } from "node:crypto"
 import type { FileStorage } from "../../storage/interface.js"
-import { ErrorMessage } from "../../lib/api/errors.js"
 import { ERROR_MESSAGE } from "../../errors.js"
 import { ecrecover, fromRpcSig, hashPersonalMessage } from "@ethereumjs/util"
+import type { Validators } from "../../validation.js"
 
 type Params = operations['GetUserBackups']['parameters']['path']
 type ReqBody = operations['GetUserBackups']['requestBody']
@@ -73,7 +72,7 @@ export default function createGetBackupsHandler(opts: {
 			}
 
 			if (!provenOwnership) {
-				throw new HttpError(HttpStatus.BadRequest, ErrorMessage.SIGNATURE_DOES_NOT_MATCH_PUBKEY)
+				throw new HttpError(HttpStatus.BadRequest, ERROR_MESSAGE.SIGNATURE_DOES_NOT_MATCH_PUBKEY)
 			}
 
 			const hasher = createHash('sha256')
@@ -81,7 +80,7 @@ export default function createGetBackupsHandler(opts: {
 			const pubkeyHash = bufferToByteString(hasher.digest())
 			const backups = await storage.getUserBackups(req.ctx, pubkeyHash)
 			if (backups == null) {
-				throw new HttpError(HttpStatus.NotFound, ErrorMessage.NO_BACKUPS_FOUND)
+				throw new HttpError(HttpStatus.NotFound, ERROR_MESSAGE.NO_BACKUPS_FOUND)
 			}
 			const responseBackups = new Array(backups.length)
 			for (let i = 0, len = backups.length; i < len; i++) {
@@ -104,3 +103,4 @@ export default function createGetBackupsHandler(opts: {
 		}
 	}
 }
+
