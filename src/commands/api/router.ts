@@ -17,7 +17,7 @@ import createGetSchemaYamlHandler from '../../api/get-schema-yaml.js';
 import createGetSchemaJsonHandler from '../../api/get-schema-json.js';
 import type { OpenAPIV3_1 } from 'openapi-types';
 import createGetBackupsHandler from '../../api/backups/get-backups.js';
-import createCreateUserBackupHandler from '../../api/backups/users/post-user-backup.js';
+import createCreateUserBackupHandler from '../../api/backups/users/create-user-backup.js';
 import createDeleteUserBackupHandler from '../../api/backups/users/delete-user-backup.js';
 import type { Validators } from '../../validation.js';
 import type { ApiMetrics } from './metrics.js';

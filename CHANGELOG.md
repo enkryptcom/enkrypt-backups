@@ -1,3 +1,8 @@
+## Upcoming
+
+- REPL to create, list, and delete backups
+- Upgrade NPM packages
+
 ## Release 0.2.0 (2025-02-05)
 
 - Cleanup & restructure codebase

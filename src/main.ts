@@ -31,6 +31,7 @@ function printHelp(stream: Writable): void {
 	stream.write('Commands\n')
 	stream.write('  api       Start the API server\n')
 	stream.write('  client    Start an API client (used for testing)\n')
+	stream.write('  client2\n')
 }
 
 function printVersion(stream: Writable): void {
@@ -230,11 +231,13 @@ async function main(mainFile: string, argv: string[], env: EnvironmentVariables)
 	try {
 		switch (cmd) {
 			case 'api': {
-				code = await (await import('./cli/api.js')).default(globalOpts)
+				const cmd = await import('./cli/api.js')
+				code = await cmd.default(globalOpts)
 				break;
 			}
-			case 'client': {
-				code = await (await import('./cli/client.js')).default(globalOpts)
+			case 'repl': {
+				const cmd = await import('./cli/repl.js')
+				code = await cmd.default(globalOpts)
 				break;
 			}
 			default: {
