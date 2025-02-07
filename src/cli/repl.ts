@@ -113,12 +113,11 @@ async function clientCmd(opts: CommandOptions): Promise<void> {
 				'.privkey',
 				'.pubkey',
 				'.userid',
-				'.set-private-key',
-				'.set-userid',
-				'.set-random-userid',
-				'.create-backup',
-				'.delete-backup',
-				'.list-backups',
+				'.url',
+				'.list',
+				'.get',
+				'.create',
+				'.delete',
 			]
 			const match = commands.filter(c => c.startsWith(line.split(' ')[0]))
 			return [match.length ? match : commands, line]
@@ -157,17 +156,15 @@ async function clientCmd(opts: CommandOptions): Promise<void> {
 		state.repl.setPrompt('')
 		state.repl.prompt()
 		state.repl.output.write(`.help                            Display this help message\n`)
-		state.repl.output.write(`.state                           Display the current state\n`)
-		state.repl.output.write(`.privkey                         Display the current private key\n`)
-		state.repl.output.write(`.pubkey                          Display the current public key\n`)
-		state.repl.output.write(`.userid                          Display the current user id\n`)
-		state.repl.output.write(`.set-private-key PRIVATE_KEY     Set the private key & derive a new public key\n`)
-		state.repl.output.write(`.set-userid USER_ID              Set the user ID\n`)
-		state.repl.output.write(`.set-random-userid               Set a random user ID\n`)
-		state.repl.output.write(`.list-backups                    List backups\n`)
-		state.repl.output.write(`.create-backup DATA              Create a new backup or override an existing backup for the current public key and user id\n`)
-		state.repl.output.write(`.delete-backup                   Delete a backup for the current public key and user id\n`)
-		state.repl.output.write('\n')
+		state.repl.output.write(`.state                           Display the state\n`)
+		state.repl.output.write(`.privkey [PRIVKEY|r[and[om]]]    Display or set the private key\n`)
+		state.repl.output.write(`.pubkey                          Display the public key\n`)
+		state.repl.output.write(`.userid [USER_ID|r[and[om]]]     Display or set the user id\n`)
+		state.repl.output.write(`.url [APIURL]                    Display or set the API URL\n`)
+		state.repl.output.write(`.list                            List backups of the pubkey\n`)
+		state.repl.output.write(`.get                             Get the backup of the pubkey and userid\n`)
+		state.repl.output.write(`.create DATA                     Create a new backup or override an existing backup for the pubkey and userid\n`)
+		state.repl.output.write(`.delete                          Delete the backup of the pubkey and userid, if it exists\n`)
 		state.repl.setPrompt('> ')
 		state.repl.prompt()
 	})
@@ -178,16 +175,48 @@ async function clientCmd(opts: CommandOptions): Promise<void> {
 		state.repl.output.write(`Private key: ${bufferToByteString(state.privkey)}\n`)
 		state.repl.output.write(`Public key:  ${bytesToByteString(state.pubkey)}\n`)
 		state.repl.output.write(`User ID:     ${state.userid}\n`)
-		state.repl.output.write('\n')
+		state.repl.output.write(`API URL:     ${state.apiUrl}\n`)
 		state.repl.setPrompt('> ')
 		state.repl.prompt()
 	})
 
-	repl.defineCommand('privkey', function() {
+	repl.defineCommand('url', function(_text) {
 		state.repl.setPrompt('')
 		state.repl.prompt()
-		state.repl.output.write(`Private key: ${bufferToByteString(state.privkey)}\n`)
-		state.repl.output.write('\n')
+		const text = _text.trim()
+		if (!text) {
+			state.repl.output.write(`API URL: ${state.apiUrl}\n`)
+		} else {
+			if (setApiUrl(state, text)) {
+				state.repl.output.write(`API URL: ${state.apiUrl}\n`)
+			} else {
+				state.repl.output.write(`Usage: .api [API_URL]\n`)
+			}
+		}
+		state.repl.setPrompt('> ')
+		state.repl.prompt()
+	})
+
+	repl.defineCommand('privkey', function(_text) {
+		state.repl.setPrompt('')
+		state.repl.prompt()
+		const text = _text.trim()
+		if (!text) {
+			state.repl.output.write(`Private key: ${bufferToByteString(state.privkey)}\n`)
+		} else {
+			let newPrivkey: string
+			if (/^r(and(om)?)?$/i.test(_text)) {
+				newPrivkey = bufferToByteString(randomBytes(32))
+			} else {
+				newPrivkey = text
+			}
+			if (setPrivateKey(state, newPrivkey)) {
+				state.repl.output.write(`Private key: ${bufferToByteString(state.privkey)}\n`)
+				state.repl.output.write(`Public key:  ${bytesToByteString(state.pubkey)}\n`)
+			} else {
+				state.repl.output.write(`Usage: .privkey [PRIVATE_KEY|r[and[om]]]\n`)
+			}
+		}
 		state.repl.setPrompt('> ')
 		state.repl.prompt()
 	})
@@ -195,87 +224,87 @@ async function clientCmd(opts: CommandOptions): Promise<void> {
 	repl.defineCommand('pubkey', function() {
 		state.repl.setPrompt('')
 		state.repl.prompt()
-		state.repl.output.write(`Public key:  ${bytesToByteString(state.pubkey)}\n`)
-		state.repl.output.write('\n')
+		state.repl.output.write(`Public key: ${bytesToByteString(state.pubkey)}\n`)
 		state.repl.setPrompt('> ')
 		state.repl.prompt()
 	})
 
-	repl.defineCommand('userid', function() {
+	repl.defineCommand('userid', function(_text) {
 		state.repl.setPrompt('')
 		state.repl.prompt()
-		state.repl.output.write(`User ID:     ${state.userid}\n`)
-		state.repl.output.write('\n')
-		state.repl.setPrompt('> ')
-		state.repl.prompt()
-	})
-
-	repl.defineCommand('set-private-key', function(text) {
-		state.repl.setPrompt('')
-		state.repl.prompt()
-		if (!setPrivateKey(state, text)) {
-			state.repl.output.write(`Usage: .set-private-key PRIVATE_KEY\n`)
+		const text = _text.trim()
+		if (!text) {
+			state.repl.output.write(`User ID: ${state.userid}\n`)
+		} else {
+			let newUserId: string
+			if (/^r(and(om)?)?$/i.test(_text)) {
+				newUserId = randomUUID()
+			} else {
+				newUserId = text
+			}
+			if (setUserId(state, newUserId)) {
+				state.repl.output.write(`User ID: ${state.userid}\n`)
+			} else {
+				state.repl.output.write(`Usage: .userid [USER_ID|r[and[om]]]\n`)
+			}
 		}
-		state.repl.output.write('\n')
 		state.repl.setPrompt('> ')
 		state.repl.prompt()
 	})
 
-	repl.defineCommand('set-userid', function(text) {
-		state.repl.setPrompt('')
-		state.repl.prompt()
-		if (!setUserId(state, text)) {
-			state.repl.output.write(`Usage: .set-userid USER_ID\n`)
-		}
-		state.repl.output.write('\n')
-		state.repl.setPrompt('> ')
-		state.repl.prompt()
-	})
-
-	repl.defineCommand('set-random-userid', function() {
-		state.repl.setPrompt('')
-		state.repl.prompt()
-		if (!setUserId(state, randomUUID())) {
-			state.repl.output.write(`Usage: .set-random-userid\n`)
-		}
-		state.repl.output.write('\n')
-		state.repl.setPrompt('> ')
-		state.repl.prompt()
-	})
-
-	repl.defineCommand('list-backups', async function() {
+	repl.defineCommand('list', async function() {
 		state.repl.setPrompt('')
 		state.repl.prompt()
 		await listBackups(state)
-		state.repl.output.write('\n')
 		state.repl.setPrompt('> ')
 		state.repl.prompt()
 	})
 
-	repl.defineCommand('create-backup', async function(text) {
+	repl.defineCommand('get', async function() {
+		state.repl.setPrompt('')
+		state.repl.prompt()
+		await getBackup(state)
+		state.repl.setPrompt('> ')
+		state.repl.prompt()
+	})
+
+	repl.defineCommand('create', async function(text) {
 		state.repl.setPrompt('')
 		state.repl.prompt()
 		const textTrimmed = text.trim()
 		if (!textTrimmed) {
-			state.repl.output.write(`Usage: .create-backup DATA\n`)
+			state.repl.output.write(`Usage: .create DATA\n`)
 		} else {
 			await createBackup(state, textTrimmed)
 		}
-		state.repl.output.write('\n')
 		state.repl.setPrompt('> ')
 		state.repl.prompt()
 	})
 
-	repl.defineCommand('delete-backup', async function() {
+	repl.defineCommand('delete', async function() {
 		state.repl.setPrompt('')
 		state.repl.prompt()
 		await deleteBackup(state)
-		state.repl.output.write('\n')
 		state.repl.setPrompt('> ')
 		state.repl.prompt()
 	})
 
 	return new Promise(res => repl.on('exit', res))
+}
+
+
+function setApiUrl(state: ReplState, newApiUrl: string): boolean {
+	let apiUrl: string = newApiUrl.trim()
+	if (!/^[a-zA-Z]*:\/\//.test(apiUrl)) {
+		// Doesn't start with a protocol? Prepend with http:// or https://
+		if (apiUrl.startsWith('localhost') || apiUrl.startsWith('127.0.0.1')) {
+			apiUrl = `http://${apiUrl}`
+		} else {
+			apiUrl = `https://${apiUrl}`
+		}
+	}
+	state.apiUrl = apiUrl
+	return true
 }
 
 function setPrivateKey(state: ReplState, newPrivkeyInput: string): boolean {
@@ -289,8 +318,6 @@ function setPrivateKey(state: ReplState, newPrivkeyInput: string): boolean {
 		const newPubkeyBytes = privateToPublic(newPrivkeyBuf)
 		state.privkey = newPrivkeyBuf
 		state.pubkey = newPubkeyBytes
-		state.repl.output.write(`Private key: ${newPrivkeyByteString}\n`)
-		state.repl.output.write(`Public key:  ${bytesToByteString(newPubkeyBytes)}\n`)
 		return true
 	} catch (err) {
 		state.repl.output.write(`Invalid private key: ${String(err as Error)}\n`)
@@ -305,7 +332,6 @@ function setUserId(state: ReplState, newUserIdInput: string): boolean {
 		return false
 	}
 	state.userid = newUserId
-	state.repl.output.write(`User ID: ${newUserId}\n`)
 	return true
 }
 
@@ -318,6 +344,7 @@ async function createBackup(state: ReplState, input: string): Promise<boolean> {
 	const body: components['schemas']['CreateUserBackupRequest'] = { payload, }
 	const url = `${state.apiUrl}/backups/${bytesToByteString(state.pubkey)}/users/${state.userid}?signature=${sig}`
 	try {
+		state.repl.output.write(`${url}\n`)
 		const res = await fetch(url, {
 			keepalive: true,
 			method: 'POST',
@@ -352,6 +379,7 @@ async function deleteBackup(state: ReplState): Promise<boolean> {
 	const sig = toRpcSig(ecsig.v, ecsig.r, ecsig.s)
 	const url = `${state.apiUrl}/backups/${bytesToByteString(state.pubkey)}/users/${state.userid}?signature=${sig}`
 	try {
+		state.repl.output.write(`${url}\n`)
 		const res = await fetch(url, {
 			keepalive: true,
 			method: 'DELETE',
@@ -382,6 +410,7 @@ async function listBackups(state: ReplState): Promise<boolean> {
 	const sig = toRpcSig(ecsig.v, ecsig.r, ecsig.s)
 	const url = `${state.apiUrl}/backups/${bytesToByteString(state.pubkey)}?signature=${sig}`
 	try {
+		state.repl.output.write(`${url}\n`)
 		const res = await fetch(url, {
 			keepalive: true,
 			method: 'GET',
@@ -402,11 +431,49 @@ async function listBackups(state: ReplState): Promise<boolean> {
 		} else {
 			for (let i = 0; i < len; i++) {
 				const backup = backups[i]
-				const { payload, userId, updatedAt, } = backup
-				const raw = byteStringToBuffer(payload).toString('utf8')
-				state.repl.output.write(`Backup ${i}. ${updatedAt} ${userId} ${raw}\n`)
+				const { userId, updatedAt, } = backup
+				state.repl.output.write(`Backup ${i}. ${updatedAt} ${userId}\n`)
 			}
 		}
+		return true
+	} catch (err) {
+		state.repl.output.write(`Error getting backups: ${String(err)} \n`)
+		return false
+	}
+}
+
+async function getBackup(state: ReplState): Promise<boolean> {
+	const now = new Date()
+	const ymd = `${(now.getUTCMonth() + 1).toString().padStart(2, '0')}-${now.getUTCDate().toString().padStart(2, '0')}-${now.getUTCFullYear()}`
+	const msg = `${bytesToByteString(state.pubkey)}-GET-BACKUP-${ymd}`
+	const msgHash = hashPersonalMessage(Buffer.from(msg, 'utf8'))
+	const ecsig = ecsign(msgHash, state.privkey)
+	const sig = toRpcSig(ecsig.v, ecsig.r, ecsig.s)
+	const url = `${state.apiUrl}/backups/${bytesToByteString(state.pubkey)}/users/${state.userid}?signature=${sig}`
+	try {
+		state.repl.output.write(`${url}\n`)
+		const res = await fetch(url, {
+			keepalive: true,
+			method: 'GET',
+			headers: [['Accept', 'application/json']],
+			signal: AbortSignal.timeout(5_000),
+		})
+		if (res.status === 404) {
+			const text = await res.text()
+			state.repl.output.write(`Backup not found: ${text}\n`)
+			return false
+		}
+		if (!res.ok) {
+			let emsg = await res.text().catch((err) => `Failed to read response text: ${String(err)}`)
+			const emsglen = emsg.length
+			if (emsglen > 512 + 10 + emsglen.toString().length) emsg = `${emsg.slice(0, 512)}... (512/${emsglen})`
+			throw new Error(`Server responded with ${res.status} ${res.statusText}: ${emsg}`)
+		}
+		const json = await res.json() as components['schemas']['GetUserBackupResponse']
+		const backup = json.backup
+		const { updatedAt, payload, userId, } = backup
+		const raw = byteStringToBuffer(payload).toString('utf8')
+		state.repl.output.write(`Backup ${updatedAt} ${userId}: ${raw}\n`)
 		return true
 	} catch (err) {
 		state.repl.output.write(`Error getting backups: ${String(err)} \n`)

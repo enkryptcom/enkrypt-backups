@@ -1,3 +1,9 @@
+## Upcoming
+
+- Split list and get into different endpoints
+- Order API responses properly
+- Order
+
 ## Release 0.3.0 (2025-02-07)
 
 - REPL to create, list, and delete backups

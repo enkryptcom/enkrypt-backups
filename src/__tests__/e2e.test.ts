@@ -16,6 +16,7 @@ import { gunzip, } from 'node:zlib'
 import type { Backup } from "../storage/interface.js";
 import { getApiHttpConfig, getStorageConfig, } from "../env.js";
 import { setup } from "../commands/api/setup.js";
+import { ERROR_MESSAGE } from "../errors.js";
 
 
 describe('e2e', { timeout: 10_000, }, function() {
@@ -340,7 +341,7 @@ describe('e2e', { timeout: 10_000, }, function() {
 
 		strictEqual(mockBackupInFilesystem.payload, bufferToByteString(mockEncryptedBackup), 'Payload mismatch')
 
-		// Check we can retrieve it using the API
+		// Check we can retrieve it in the list of backups returned by the API
 		type GetBackupsResult1 = components['schemas']['GetUserBackupsResponse']
 		const getBackupsResult1 = await new Promise<GetBackupsResult1>(function(res, rej) {
 			const now = new Date()
@@ -399,9 +400,72 @@ describe('e2e', { timeout: 10_000, }, function() {
 			backups: [{
 				userId,
 				updatedAt: getBackupsResult1.backups[0].updatedAt, // :)
-				payload: bufferToByteString(mockEncryptedBackup),
+				// payload: bufferToByteString(mockEncryptedBackup),
 			}]
 		} satisfies components['schemas']['GetUserBackupsResponse'])
+
+		// Check we can retrieve it using the API
+		type GetBackupResult1 = components['schemas']['GetUserBackupResponse']
+		const getBackupResult1 = await new Promise<GetBackupResult1>(function(res, rej) {
+			const now = new Date()
+			const message = `${pubkey}-GET-BACKUP-${(now.getUTCMonth() + 1).toString().padStart(2, '0')}-${now.getUTCDate().toString().padStart(2, '0')}-${now.getUTCFullYear()}`
+			const messageHash = hashPersonalMessage(Buffer.from(message, 'utf8'))
+			const ecsig = ecsign(messageHash, privkey)
+			const signature = toRpcSig(ecsig.v, ecsig.r, ecsig.s)
+
+			const request = http.request({
+				host,
+				port,
+				path: `/backups/${pubkey}/users/${userId}?signature=${signature}`,
+				method: 'GET',
+				signal: AbortSignal.timeout(5_000),
+				headers: { 'content-type': 'application/json' },
+			})
+
+			request.on('response', function(response: http.IncomingMessage) {
+				if (response.statusCode !== 200) {
+					rej(new Error(`Expected GET backups status code 200, got ${response.statusCode}`))
+					return
+				}
+
+				let errRef: { err: Error } | undefined
+				let chunks: Buffer[] = []
+				response.on('data', function(chunk) {
+					chunks.push(chunk)
+				})
+				response.on('error', function(err) {
+					errRef = { err }
+				})
+				response.on('end', function() {
+					if (errRef) rej(errRef.err)
+					else {
+						try {
+							const json = Buffer.concat(chunks).toString('utf8')
+							const data = JSON.parse(json)
+							res(data)
+						} catch (err) {
+							rej(new Error(`Failed to parse JSON: ${(err as Error)?.message}`))
+						}
+					}
+				})
+			})
+
+			request.on('error', function(err) {
+				rej(err)
+			})
+
+			request.end()
+		})
+
+		ok(getBackupResult1 && typeof getBackupResult1 === 'object', 'Expected object')
+		ok(getBackupResult1.backup && typeof getBackupResult1.backup === 'object', 'Expected object')
+		deepStrictEqual(getBackupResult1, {
+			backup: {
+				userId,
+				updatedAt: getBackupResult1.backup.updatedAt, // :)
+				payload: bufferToByteString(mockEncryptedBackup),
+			}
+		} satisfies components['schemas']['GetUserBackupResponse'])
 
 		// Delete the backup
 
@@ -459,7 +523,7 @@ describe('e2e', { timeout: 10_000, }, function() {
 
 		deepStrictEqual(deleteBackupResult, { message: 'Ok', })
 
-		// Check the backup is deleted
+		// Check the backup is deleted in the API list response
 		type GetBackupsResult2 = components['schemas']['GetUserBackupsResponse']
 		const getBackupsResult2 = await new Promise<GetBackupsResult2>(function(res, rej) {
 			const now = new Date()
@@ -516,5 +580,62 @@ describe('e2e', { timeout: 10_000, }, function() {
 		ok(Array.isArray(getBackupsResult2.backups), 'Expected array')
 		deepStrictEqual(getBackupsResult2.backups, [], 'Expected empty array (by deep equal)')
 		strictEqual(getBackupsResult2.backups.length, 0, 'Expected empty array (by length)')
+
+		// Check the backup is deleted in the API get response
+		const getBackupResult2 = await new Promise<{ message: string, }>(function(res, rej) {
+			const now = new Date()
+			const message = `${pubkey}-GET-BACKUP-${(now.getUTCMonth() + 1).toString().padStart(2, '0')}-${now.getUTCDate().toString().padStart(2, '0')}-${now.getUTCFullYear()}`
+			const messageHash = hashPersonalMessage(Buffer.from(message, 'utf8'))
+			const ecsig = ecsign(messageHash, privkey)
+			const signature = toRpcSig(ecsig.v, ecsig.r, ecsig.s)
+
+			const request = http.request({
+				host,
+				port,
+				path: `/backups/${pubkey}/users/${userId}?signature=${signature}`,
+				method: 'GET',
+				signal: AbortSignal.timeout(5_000),
+				headers: { 'content-type': 'application/json' },
+			})
+
+			request.on('response', function(response: http.IncomingMessage) {
+				if (response.statusCode !== 404) {
+					rej(new Error(`Expected GET backups status code 404, got ${response.statusCode}`))
+					return
+				}
+
+				let errRef: { err: Error } | undefined
+				let chunks: Buffer[] = []
+				response.on('data', function(chunk) {
+					chunks.push(chunk)
+				})
+				response.on('error', function(err) {
+					errRef = { err }
+				})
+				response.on('end', function() {
+					if (errRef) rej(errRef.err)
+					else {
+						try {
+							const json = Buffer.concat(chunks).toString('utf8')
+							const data = JSON.parse(json)
+							res(data)
+						} catch (err) {
+							rej(new Error(`Failed to parse JSON: ${(err as Error)?.message}`))
+						}
+					}
+				})
+			})
+
+			request.on('error', function(err) {
+				rej(err)
+			})
+
+			request.end()
+		})
+
+		ok(getBackupResult2 && typeof getBackupResult2 === 'object', 'Expected object')
+		deepStrictEqual(getBackupResult2, {
+			message: ERROR_MESSAGE.BACKUP_NOT_FOUND
+		})
 	})
 })

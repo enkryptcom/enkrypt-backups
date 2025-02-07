@@ -11,7 +11,7 @@ import type { Validators } from "../../../validation.js"
 type Params = operations['CreateUserBackup']['parameters']['path']
 type ReqBody = NonNullable<operations['CreateUserBackup']['requestBody']>['content']['application/json']
 type ResBody = operations['CreateUserBackup']['responses']['200']['content']['application/json']
-type ReqQuery = operations['CreateUserBackup']['parameters']['query']
+type ReqQuery = NonNullable<operations['CreateUserBackup']['parameters']['query']>
 type Handler = RequestHandler<Params, ResBody, ReqBody, ReqQuery>
 
 export default function createCreateUserBackupHandler(opts: {

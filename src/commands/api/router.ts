@@ -21,6 +21,7 @@ import createCreateUserBackupHandler from '../../api/backups/users/create-user-b
 import createDeleteUserBackupHandler from '../../api/backups/users/delete-user-backup.js';
 import type { Validators } from '../../validation.js';
 import type { ApiMetrics } from './metrics.js';
+import createGetUserBackupHandler from '../../api/backups/users/get-user-backup.js';
 
 export function createHttpAppRouter(opts: {
 	disposer: Disposer,
@@ -117,6 +118,7 @@ export function createHttpAppRouter(opts: {
 	app.get('/schema.yml', createGetSchemaYamlHandler({ openApiDocYaml }))
 	app.get('/schema.yaml', createGetSchemaYamlHandler({ openApiDocYaml }))
 	app.get('/backups/:publicKey', createGetBackupsHandler({ validators, storage }))
+	app.get('/backups/:publicKey/users/:userId', createGetUserBackupHandler({ validators, storage, }))
 	app.post('/backups/:publicKey/users/:userId', createCreateUserBackupHandler({ validators, storage, }))
 	app.delete('/backups/:publicKey/users/:userId', createDeleteUserBackupHandler({ validators, storage, }))
 

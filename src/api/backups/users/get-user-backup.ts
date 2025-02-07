@@ -1,20 +1,20 @@
 import type { RequestHandler } from "express"
-import type { operations } from "../../openapi.js"
-import { HttpError, HttpStatus } from "../../utils/http.js"
-import { bufferToByteString, bytesToByteString, byteStringToBytes, parseByteString } from "../../utils/coersion.js"
+import type { operations } from "../../../openapi.js"
+import { HttpError, HttpStatus } from "../../../utils/http.js"
+import { bufferToByteString, bytesToByteString, byteStringToBytes, parseByteString, parseUUID } from "../../../utils/coersion.js"
 import { createHash } from "node:crypto"
-import type { FileStorage } from "../../storage/interface.js"
-import { ERROR_MESSAGE } from "../../errors.js"
+import type { FileStorage } from "../../../storage/interface.js"
+import { ERROR_MESSAGE } from "../../../errors.js"
 import { ecrecover, fromRpcSig, hashPersonalMessage } from "@ethereumjs/util"
-import type { Validators } from "../../validation.js"
+import type { Validators } from "../../../validation.js"
 
-type Params = operations['GetUserBackups']['parameters']['path']
-type ReqBody = operations['GetUserBackups']['requestBody']
-type ResBody = operations['GetUserBackups']['responses']['200']['content']['application/json']
+type Params = operations['GetUserBackup']['parameters']['path']
+type ReqBody = operations['GetUserBackup']['requestBody']
+type ResBody = operations['GetUserBackup']['responses']['200']['content']['application/json']
 type ReqQuery = NonNullable<operations['GetUserBackups']['parameters']['query']>
 type Handler = RequestHandler<Params, ResBody, ReqBody, ReqQuery>
 
-export default function createGetBackupsHandler(opts: {
+export default function createGetUserBackupHandler(opts: {
 	validators: Validators,
 	storage: FileStorage,
 }): Handler {
@@ -33,6 +33,14 @@ export default function createGetBackupsHandler(opts: {
 				})
 			}
 
+			const { userId: userIdParam, } = req.params
+			if (!validators.userId(userIdParam)) {
+				throw new HttpError(HttpStatus.BadRequest, {
+					message: ERROR_MESSAGE.INVALID_USER_ID,
+					errors: validators.userId.errors,
+				})
+			}
+
 			const { signature: signatureParam } = req.query!
 			if (!validators.byteString(signatureParam)) {
 				throw new HttpError(HttpStatus.BadRequest, {
@@ -43,6 +51,7 @@ export default function createGetBackupsHandler(opts: {
 
 			const pubkey = parseByteString(publicKeyParam)
 			const signature = parseByteString(signatureParam)
+			const userId = parseUUID(userIdParam)
 
 			const now = new Date()
 			// Now minus 10 minutes
@@ -55,9 +64,9 @@ export default function createGetBackupsHandler(opts: {
 			const ymdub = `${(ub.getUTCMonth() + 1).toString().padStart(2, '0')}-${ub.getUTCDate().toString().padStart(2, '0')}-${ub.getUTCFullYear()}`
 
 			const legitMessages = new Set([
-				`${pubkey}-GET-BACKUPS-${ymdnow}`,
-				`${pubkey}-GET-BACKUPS-${ymdlb}`,
-				`${pubkey}-GET-BACKUPS-${ymdub}`
+				`${pubkey}-GET-BACKUP-${ymdnow}`,
+				`${pubkey}-GET-BACKUP-${ymdlb}`,
+				`${pubkey}-GET-BACKUP-${ymdub}`
 			])
 
 			const esig = fromRpcSig(parseByteString(signature))
@@ -78,20 +87,19 @@ export default function createGetBackupsHandler(opts: {
 			const hasher = createHash('sha256')
 			hasher.update(byteStringToBytes(pubkey))
 			const pubkeyHash = bufferToByteString(hasher.digest())
-			const backups = await storage.getUserBackups(req.ctx, pubkeyHash)
+			const backup = await storage.getUserBackup(req.ctx, pubkeyHash, userId)
+			if (backup == null) {
+				throw new HttpError(HttpStatus.NotFound, ERROR_MESSAGE.BACKUP_NOT_FOUND)
+			}
 
-			const responseBackups = new Array(backups.length)
-			for (let i = 0, len = backups.length; i < len; i++) {
-				const backup = backups[i]
-				const responseBackup: ResBody['backups'][number] = {
-					userId: backup.userId,
-					updatedAt: backup.updatedAt
-				}
-				responseBackups[i] = responseBackup
-			}
 			const response: ResBody = {
-				backups: responseBackups,
+				backup: {
+					userId: backup.userId,
+					payload: backup.payload,
+					updatedAt: backup.updatedAt,
+				}
 			}
+
 			res
 				.status(HttpStatus.OK)
 				.json(response)

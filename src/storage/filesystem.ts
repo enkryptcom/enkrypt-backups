@@ -8,6 +8,7 @@ import { gunzip as gunzipCb, gzip as gzipCb } from 'node:zlib'
 import { promisify } from 'node:util'
 import type { Dirent } from 'node:fs'
 import { strictEqual } from 'node:assert'
+import { MAX_RECENT_BACKUPS } from './constants.js'
 
 const gunzip = promisify(gunzipCb)
 const gzip = promisify(gzipCb)
@@ -60,18 +61,18 @@ export class FilesystemStorage implements FileStorage {
 		const dirpath = dirname(filepath)
 		const filename = basename(filepath)
 		const tmpfilepath = join(this._tmpDirpath, 'enkrypt-backend', `${filename}-${randomUUID()}.tmp`)
-		ctx.logger.trace({ pubkeyHash, userId, filepath, tmpfilepath }, 'Saving temporary file')
+		ctx.logger.trace(`Saving temporary file  ${filepath}=${filepath}`)
 
 		const tmpdirpath = dirname(tmpfilepath)
-		ctx.logger.trace({ tmpdirpath, }, 'Creating temporary directory')
+		ctx.logger.trace(`Creating temporary directory  tmpdirpath=${tmpdirpath}`)
 		await this._fs.mkdir(tmpdirpath, { recursive: true, mode: 0o700, })
 
 		const data = await gzip(Buffer.from(JSON.stringify(backup), 'utf8'))
 
-		ctx.logger.trace({ tmpfilepath, }, 'Saving temporary file')
+		ctx.logger.trace(`Saving temporary file  tmpfilepath=${tmpfilepath}`)
 		await this._fs.writeFile(tmpfilepath, data, { mode: 0o600, })
 
-		ctx.logger.trace({ tmpfilepath, }, 'Creating directory')
+		ctx.logger.trace(`Creating directory  tmpfilepath=${tmpfilepath}`)
 		await this._fs.mkdir(dirpath, { recursive: true, mode: 0o700, })
 
 		ctx.logger.trace({ tmpfilepath, }, 'Renaming temporary file')
@@ -80,7 +81,7 @@ export class FilesystemStorage implements FileStorage {
 
 	async getUserBackups(ctx: Context, pubkeyHash: Hash): Promise<Backup[]> {
 		const pubkeyHashDirpath = this.getPubkeyHashDirpath(pubkeyHash)
-		ctx.logger.debug({ pubkeyHash, pubkeyHashDirpath, }, 'Getting user backups')
+		ctx.logger.debug(`Getting user backups  pubkeyHashDirpath=${pubkeyHashDirpath}`)
 		let files: Dirent[]
 		try {
 			files = await this._fs.readdir(pubkeyHashDirpath, { withFileTypes: true, })
@@ -98,12 +99,13 @@ export class FilesystemStorage implements FileStorage {
 			backups.push(backup)
 		}
 		backups.sort(sortBackupsDescending)
+		backups.splice(MAX_RECENT_BACKUPS)
 		return backups
 	}
 
 	async getUserBackup(ctx: Context, pubkeyHash: Hash, userId: UUID): Promise<null | Backup> {
 		const pubkeyHashFilename = this.getPubkeyHashUserIdFilepath(pubkeyHash, userId)
-		ctx.logger.debug({ pubkeyHash, userId, pubkeyHashFilename, }, 'Getting user backup')
+		ctx.logger.debug(`Getting user backup  pubkeyHashFilename=${pubkeyHashFilename}`)
 		try {
 			const compressed = await this._fs.readFile(pubkeyHashFilename)
 			const buf = await gunzip(compressed)
@@ -118,12 +120,12 @@ export class FilesystemStorage implements FileStorage {
 
 	async deleteUserBackup(ctx: Context, pubkeyHash: Hash, userId: UUID): Promise<void> {
 		const pubkeyHashFilename = this.getPubkeyHashUserIdFilepath(pubkeyHash, userId)
-		ctx.logger.debug({ pubkeyHash, userId, pubkeyHashFilename, }, 'Deleting user backup')
+		ctx.logger.debug(`Deleting user backup  pubkeyHashFilename=${pubkeyHashFilename}`)
 		try {
 			await this._fs.unlink(pubkeyHashFilename)
 		} catch (err) {
 			if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
-				ctx.logger.warn({ pubkeyHash, userId, pubkeyHashFilename, }, 'Failed to delete user backup: not found')
+				ctx.logger.warn(`Failed to delete user backup: not found  pubkeyHashFilename=${pubkeyHashFilename}`)
 				return
 			}
 			throw err

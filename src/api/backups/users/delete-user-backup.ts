@@ -11,7 +11,7 @@ import type { Validators } from "../../../validation.js"
 type Params = operations['DeleteUserBackup']['parameters']['path']
 type ReqBody = operations['DeleteUserBackup']['requestBody']
 type ResBody = operations['DeleteUserBackup']['responses']['200']['content']['application/json']
-type ReqQuery = operations['DeleteUserBackup']['parameters']['query']
+type ReqQuery = NonNullable<operations['DeleteUserBackup']['parameters']['query']>
 type Handler = RequestHandler<Params, ResBody, ReqBody, ReqQuery>
 
 export default function createDeleteUserBackupHandler(opts: {

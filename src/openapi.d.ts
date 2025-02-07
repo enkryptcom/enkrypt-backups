@@ -139,7 +139,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        get: operations["GetUserBackup"];
         put?: never;
         post: operations["CreateUserBackup"];
         delete: operations["DeleteUserBackup"];
@@ -182,7 +182,15 @@ export interface components {
             message: string;
         };
         GetUserBackupsResponse: {
-            backups: components["schemas"]["Backup"][];
+            backups: components["schemas"]["BackupSummary"][];
+        };
+        GetUserBackupResponse: {
+            backup: components["schemas"]["Backup"];
+        };
+        BackupSummary: {
+            /** Format: date-time */
+            updatedAt: string;
+            userId: string;
         };
         Backup: {
             /** Format: date-time */
@@ -238,6 +246,14 @@ export interface components {
             };
             content: {
                 "application/json": components["schemas"]["GetUserBackupsResponse"];
+            };
+        };
+        GetUserBackupSuccess: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["GetUserBackupResponse"];
             };
         };
         PostUserBackupSuccess: {
@@ -360,8 +376,8 @@ export interface operations {
     };
     GetUserBackups: {
         parameters: {
-            query: {
-                signature: components["parameters"]["QuerySignature"];
+            query?: {
+                signature?: components["parameters"]["QuerySignature"];
             };
             header?: never;
             path: {
@@ -374,10 +390,27 @@ export interface operations {
             200: components["responses"]["GetUserBackupsSuccess"];
         };
     };
+    GetUserBackup: {
+        parameters: {
+            query?: {
+                signature?: components["parameters"]["QuerySignature"];
+            };
+            header?: never;
+            path: {
+                publicKey: components["parameters"]["PathPublicKey"];
+                userId: components["parameters"]["PathUserId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["GetUserBackupSuccess"];
+        };
+    };
     CreateUserBackup: {
         parameters: {
-            query: {
-                signature: components["parameters"]["QuerySignature"];
+            query?: {
+                signature?: components["parameters"]["QuerySignature"];
             };
             header?: never;
             path: {
@@ -393,8 +426,8 @@ export interface operations {
     };
     DeleteUserBackup: {
         parameters: {
-            query: {
-                signature: components["parameters"]["QuerySignature"];
+            query?: {
+                signature?: components["parameters"]["QuerySignature"];
             };
             header?: never;
             path: {

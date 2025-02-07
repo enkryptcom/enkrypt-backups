@@ -65,6 +65,15 @@ paths:
           $ref: '#/components/responses/GetUserBackupsSuccess'
 
   /backups/{publicKey}/users/{userId}:
+    get:
+      operationId: GetUserBackup
+      parameters:
+        - $ref: '#/components/parameters/PathPublicKey'
+        - $ref: '#/components/parameters/PathUserId'
+        - $ref: '#/components/parameters/QuerySignature'
+      responses:
+        200:
+          $ref: '#/components/responses/GetUserBackupSuccess'
     post:
       operationId: CreateUserBackup
       parameters:
@@ -151,6 +160,12 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/GetUserBackupsResponse'
+
+    GetUserBackupSuccess:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/GetUserBackupResponse'
 
     PostUserBackupSuccess:
       content:
@@ -248,7 +263,27 @@ components:
         backups:
           type: array
           items:
-            $ref: '#/components/schemas/Backup'
+            $ref: '#/components/schemas/BackupSummary'
+
+    GetUserBackupResponse:
+      type: object
+      required:
+        - backup
+      properties:
+        backup:
+          $ref: '#/components/schemas/Backup'
+
+    BackupSummary:
+      type: object
+      required:
+        - updatedAt
+        - userId
+      properties:
+        updatedAt:
+          type: string
+          format: date-time
+        userId:
+          type: string
 
     Backup:
       type: object
@@ -264,3 +299,4 @@ components:
           type: string
         payload:
           $ref: '#/components/schemas/ByteString'
+
