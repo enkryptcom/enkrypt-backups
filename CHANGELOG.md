@@ -1,4 +1,4 @@
-## Upcoming
+## Release 0.4.0 (2025-02-07)
 
 - Split list and get into different endpoints
 - Order API responses properly
