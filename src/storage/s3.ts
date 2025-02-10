@@ -203,6 +203,8 @@ export class S3Storage implements FileStorage {
 	private _getAllHeads(ctx: Context, keys: string[]): Promise<HeadObjectCommandOutput[]> {
 		return new Promise<HeadObjectCommandOutput[]>((res, rej) => {
 			const count = keys.length
+			if (count === 0) return res([])
+
 			const concurrency = 10
 			let active = 0
 			let errref: undefined | { err: Error }

@@ -303,7 +303,7 @@ function setApiUrl(state: ReplState, newApiUrl: string): boolean {
 			apiUrl = `https://${apiUrl}`
 		}
 	}
-	state.apiUrl = apiUrl
+	state.apiUrl = apiUrl.replace(/\/^/, '')
 	return true
 }
 
@@ -352,7 +352,7 @@ async function createBackup(state: ReplState, input: string): Promise<boolean> {
 				['Accept', 'application/json'],
 				['Content-Type', 'application/json'],
 			],
-			signal: AbortSignal.timeout(5_000),
+			signal: AbortSignal.timeout(30_000),
 			body: JSON.stringify(body),
 		})
 		if (!res.ok) {
@@ -384,7 +384,7 @@ async function deleteBackup(state: ReplState): Promise<boolean> {
 			keepalive: true,
 			method: 'DELETE',
 			headers: [['Accept', 'application/json']],
-			signal: AbortSignal.timeout(5_000),
+			signal: AbortSignal.timeout(30_000),
 		})
 		if (!res.ok) {
 			let emsg = await res.text().catch((err) => `Failed to read response text: ${String(err)}`)
@@ -415,7 +415,7 @@ async function listBackups(state: ReplState): Promise<boolean> {
 			keepalive: true,
 			method: 'GET',
 			headers: [['Accept', 'application/json']],
-			signal: AbortSignal.timeout(5_000),
+			signal: AbortSignal.timeout(30_000),
 		})
 		if (!res.ok) {
 			let emsg = await res.text().catch((err) => `Failed to read response text: ${String(err)}`)
@@ -456,7 +456,7 @@ async function getBackup(state: ReplState): Promise<boolean> {
 			keepalive: true,
 			method: 'GET',
 			headers: [['Accept', 'application/json']],
-			signal: AbortSignal.timeout(5_000),
+			signal: AbortSignal.timeout(30_000),
 		})
 		if (res.status === 404) {
 			const text = await res.text()
