@@ -1,4 +1,4 @@
-## Upcoming
+## Release 1.1.0 (2025-02-10)
 
 - Change signature for GET BACKUP endpoint
 
