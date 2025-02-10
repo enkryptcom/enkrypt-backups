@@ -1,4 +1,4 @@
-## Upcoming
+## Release 1.0.1 (2025-02-10)
 
 - Fix a bug where API hangs when the user has zero backups
 
