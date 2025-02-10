@@ -13,7 +13,7 @@ function printHelp(stream: Writable): void {
 	stream.write('  --[no-]standalone              Force the API in standalone mode (not cluster mode)\n')
 }
 
-export default async function serveMain(globalOpts: GlobalOptions): Promise<number> {
+export default async function main(globalOpts: GlobalOptions): Promise<number> {
 	const { argv, env, stdout, stderr, logger, shutdownConfig, } = globalOpts
 
 	let configCheckOpt = 'false'

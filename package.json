@@ -46,7 +46,7 @@
 		"typescript": "5.7.3"
 	},
 	"dependencies": {
-		"@aws-sdk/client-s3": "3.743.0",
+		"@aws-sdk/client-s3": "3.744.0",
 		"@ethereumjs/util": "9.1.0",
 		"@smithy/node-http-handler": "4.0.2",
 		"ajv": "8.17.1",

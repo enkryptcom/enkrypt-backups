@@ -15,7 +15,7 @@ function printHelp(stream: Writable): void {
 	stream.write('  --api-url <url>       API URL                   http://API_HTTP_HOST:API_HTTP_PORT  http://localhost:3000\n')
 }
 
-export default async function clientMain(globalOpts: GlobalOptions): Promise<number> {
+export default async function main(globalOpts: GlobalOptions): Promise<number> {
 	const { argv, env, stdin, stdout, stderr, } = globalOpts
 
 	let bindAddr = env.API_HTTP_HOST || 'localhost'
