@@ -408,7 +408,7 @@ describe('e2e', { timeout: 10_000, }, function() {
 		type GetBackupResult1 = components['schemas']['GetUserBackupResponse']
 		const getBackupResult1 = await new Promise<GetBackupResult1>(function(res, rej) {
 			const now = new Date()
-			const message = `${pubkey}-GET-BACKUP-${(now.getUTCMonth() + 1).toString().padStart(2, '0')}-${now.getUTCDate().toString().padStart(2, '0')}-${now.getUTCFullYear()}`
+			const message = `${userId}-GET-BACKUP-${(now.getUTCMonth() + 1).toString().padStart(2, '0')}-${now.getUTCDate().toString().padStart(2, '0')}-${now.getUTCFullYear()}`
 			const messageHash = hashPersonalMessage(Buffer.from(message, 'utf8'))
 			const ecsig = ecsign(messageHash, privkey)
 			const signature = toRpcSig(ecsig.v, ecsig.r, ecsig.s)
@@ -584,7 +584,7 @@ describe('e2e', { timeout: 10_000, }, function() {
 		// Check the backup is deleted in the API get response
 		const getBackupResult2 = await new Promise<{ message: string, }>(function(res, rej) {
 			const now = new Date()
-			const message = `${pubkey}-GET-BACKUP-${(now.getUTCMonth() + 1).toString().padStart(2, '0')}-${now.getUTCDate().toString().padStart(2, '0')}-${now.getUTCFullYear()}`
+			const message = `${userId}-GET-BACKUP-${(now.getUTCMonth() + 1).toString().padStart(2, '0')}-${now.getUTCDate().toString().padStart(2, '0')}-${now.getUTCFullYear()}`
 			const messageHash = hashPersonalMessage(Buffer.from(message, 'utf8'))
 			const ecsig = ecsign(messageHash, privkey)
 			const signature = toRpcSig(ecsig.v, ecsig.r, ecsig.s)

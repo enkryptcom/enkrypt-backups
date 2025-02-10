@@ -1,6 +1,6 @@
 import { REPLServer, start, } from 'node:repl'
 import type { Writable } from "node:stream"
-import type { GlobalOptions } from "../types.js"
+import type { GlobalOptions, UUID } from "../types.js"
 import { randomBytes, randomUUID, } from "node:crypto"
 import { bufferToByteString, bytesToByteString, byteStringToBuffer, isUUID, } from "../utils/coersion.js"
 import { ecsign, hashPersonalMessage, privateToPublic, toRpcSig } from "@ethereumjs/util"
@@ -90,7 +90,7 @@ type ReplState = {
 	stderr: NodeJS.WritableStream
 	privkey: Buffer
 	pubkey: Uint8Array
-	userid: string
+	userid: UUID
 }
 
 async function clientCmd(opts: CommandOptions): Promise<void> {
@@ -445,7 +445,7 @@ async function listBackups(state: ReplState): Promise<boolean> {
 async function getBackup(state: ReplState): Promise<boolean> {
 	const now = new Date()
 	const ymd = `${(now.getUTCMonth() + 1).toString().padStart(2, '0')}-${now.getUTCDate().toString().padStart(2, '0')}-${now.getUTCFullYear()}`
-	const msg = `${bytesToByteString(state.pubkey)}-GET-BACKUP-${ymd}`
+	const msg = `${state.userid}-GET-BACKUP-${ymd}`
 	const msgHash = hashPersonalMessage(Buffer.from(msg, 'utf8'))
 	const ecsig = ecsign(msgHash, state.privkey)
 	const sig = toRpcSig(ecsig.v, ecsig.r, ecsig.s)

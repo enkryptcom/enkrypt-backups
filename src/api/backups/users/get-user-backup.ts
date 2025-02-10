@@ -64,9 +64,9 @@ export default function createGetUserBackupHandler(opts: {
 			const ymdub = `${(ub.getUTCMonth() + 1).toString().padStart(2, '0')}-${ub.getUTCDate().toString().padStart(2, '0')}-${ub.getUTCFullYear()}`
 
 			const legitMessages = new Set([
-				`${pubkey}-GET-BACKUP-${ymdnow}`,
-				`${pubkey}-GET-BACKUP-${ymdlb}`,
-				`${pubkey}-GET-BACKUP-${ymdub}`
+				`${userId}-GET-BACKUP-${ymdnow}`,
+				`${userId}-GET-BACKUP-${ymdlb}`,
+				`${userId}-GET-BACKUP-${ymdub}`
 			])
 
 			const esig = fromRpcSig(parseByteString(signature))
