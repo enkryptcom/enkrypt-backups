@@ -10,13 +10,32 @@ const WORKER_GRACEFUL_SHUTDOWN_SIGNAL_COUNT = 1
 const WORKER_ACCELERATED_SHUTDOWN_SIGNAL_COUNT = 2
 const WORKER_IMMEDIATE_SHUTDOWN_SIGNAL_COUNT = 3
 
+// Timeouts when the cluster fails to start properly
+// These timeouts are short because we want to fail fast
+const FAILED_STARTUP_GRACEFUL_SHUTDOWN_TIMEOUT = 5_000
+const FAILED_STARTUP_ACCELERATED_SHUTDOWN_TIMEOUT = 10_000
+
+// Timeouts for each worker when the cluster is reloaded with SIGHUP
+// We shut down each worker slowly one-by-one (with a large timeout
+// incase they fail to shut down for some reason) so we don't drop
+// any requests while we gracefully roll over the cluster
+const ROLLOVER_GRACEFUL_SHUTDOWN_TIMEOUT = 45_000
+const ROLLOVER_ACCELERATED_SHUTDOWN_TIMEOUT = 90_000
+// Safety check just in case something goes wrong and we're not
+// checking roll over properly
+const ROLLOVER_CHECK_INTERVAL = 17_500
+
+const kGenerationId = Symbol('GenerationId')
+const kExited = Symbol('Exited')
 const kSignals = Symbol('Signals')
 const kListening = Symbol('Listening')
 
 declare module 'node:cluster' {
 	interface Worker {
+		[kGenerationId]: number
 		[kSignals]: number
 		[kListening]: boolean
+		[kExited]: boolean
 	}
 }
 
@@ -65,15 +84,24 @@ export async function manageCluster(opts: {
 		rej = _rej
 	})
 
-	const State = {
-		RUNNING: 'RUNNING',
-		STOPPING: 'STOPPING',
-	} as const
+	const State = { RUNNING: 'RUNNING', STOPPING: 'STOPPING', } as const
 	type State = typeof State[keyof typeof State]
 	let state: State = State.RUNNING
 
 	let failedStartupGracefulShutdownTimeout: undefined | ReturnType<typeof setTimeout>
 	let failedStartupAcceleratedShutdownTimeout: undefined | ReturnType<typeof setTimeout>
+
+	// We only roll over one worker at a time to avoid downtime
+	let workerRollingOver: undefined | ClusterWorker
+	let workerRolloverGracefulShutdownTimeout: undefined | ReturnType<typeof setTimeout>
+	let workerRolloverAcceleratedShutdownTimeout: undefined | ReturnType<typeof setTimeout>
+
+	/**
+	 * ID of the current generation of workers
+	 *
+	 * Increased every time RELOAD (SIGHUP) is received and a rollover is triggered
+	 */
+	let currentGenerationId = 0
 
 	/**
 	 * Fired when the initial workers fail to start properly and some workers take
@@ -84,7 +112,6 @@ export async function manageCluster(opts: {
 		if (!acceleratedShutdown()) {
 			logger.warn('Already at or beyond accelerated shutdown of worker processes')
 		}
-		failedStartupAcceleratedShutdownTimeout = setTimeout(handleFailedStartupAcceleratedShutdownTimeout, 5_000)
 	}
 
 	/**
@@ -99,18 +126,163 @@ export async function manageCluster(opts: {
 		process.exit(1)
 	}
 
+	/**
+	 * Check if there are any workers waiting to be rolled over (of a prior generation)
+	 * and if possible gracefully shut the next one down
+	 *
+	 * Can only roll over one worker at a time
+	 */
+	function checkRollover(): void {
+		checkRolloverQueued = false
+
+		if (state === State.STOPPING) {
+			logger.trace('Cluster is stopping, not checking rolling over')
+			return
+		}
+
+		if (workerRollingOver !== undefined) {
+			logger.trace('Worker is already rolling over, not checking generations')
+			return
+		}
+
+		const generations = new Map<number, ClusterWorker[]>()
+		let lowestGenerationId: undefined | number
+		let highestGenerationId: undefined | number
+
+		// Group workers by generation
+		// Determine the lowest and highest current generations
+		for (const workerId in cluster.workers) {
+			const worker = cluster.workers[workerId]!
+			const generationId = worker[kGenerationId]
+			if (lowestGenerationId === undefined || generationId < lowestGenerationId) {
+				lowestGenerationId = generationId
+			}
+			if (highestGenerationId === undefined || generationId > highestGenerationId) {
+				highestGenerationId = generationId
+			}
+			let generationWorkers = generations.get(generationId)
+			if (!generationWorkers) {
+				generationWorkers = []
+				generations.set(generationId, generationWorkers)
+			}
+			generationWorkers.push(worker)
+		}
+
+		if (lowestGenerationId === undefined || lowestGenerationId === currentGenerationId) {
+			logger.trace('No old generations to check')
+			return
+		}
+
+		const generationIdsAsc = Array.from(generations.keys()).sort(asc)
+
+		// If possible, remove a worker from the oldest generation
+		let workerToRemove: undefined | ClusterWorker
+		let otherWorkersAreListening: undefined | boolean
+		for (let i = 0, len = generationIdsAsc.length; i < len; i++) {
+			const generationId = generationIdsAsc[i]
+			const generationWorkers = generations.get(generationId)!
+			for (let ii = 0, llen = generationWorkers.length; ii < llen; ii++) {
+				const worker = generationWorkers[ii]
+				if (workerToRemove === undefined && generationId !== currentGenerationId) {
+					workerToRemove = worker
+				} else if (worker[kListening]) {
+					otherWorkersAreListening = true
+				}
+			}
+		}
+
+		if (workerToRemove && (otherWorkersAreListening || desiredWorkerCount === 1)) {
+			logger.info(`Rolling over worker "${workerToRemove.id}" from generation ${workerToRemove[kGenerationId]}`)
+			workerRollingOver = workerToRemove
+			workerRolloverGracefulShutdownTimeout = setTimeout(
+				handleRolloverWorkerGracefulShutdownTimeout,
+				ROLLOVER_GRACEFUL_SHUTDOWN_TIMEOUT,
+			) as unknown as ReturnType<typeof setTimeout>
+			workerRolloverAcceleratedShutdownTimeout = setTimeout(
+				handleRolloverWorkerAcceleratedGracefulShutdownTimeout,
+				ROLLOVER_ACCELERATED_SHUTDOWN_TIMEOUT,
+			) as unknown as ReturnType<typeof setTimeout>
+			gracefullyShutdownWorker(workerToRemove)
+		} else if (workerToRemove) {
+			logger.warn('Cannot roll over worker, no other workers listening yet')
+		}
+	}
+
+	function handleRolloverWorkerGracefulShutdownTimeout(): void {
+		if (!workerRollingOver) {
+			logger.warn('Rollover worker graceful shutdown timeout triggered but no worker rolling over')
+			return
+		}
+		if (workerRollingOver[kExited]) {
+			logger.warn(`Rollover worker graceful shutdown timeout triggered but worker "${workerRollingOver.id}" already exited`)
+			return
+		}
+		logger.warn(
+			`Timed out waiting for rollover graceful shutdown of worker "${workerRollingOver.id}"`
+			+ ` from generation ${workerRollingOver[kGenerationId]}, beginning accelerated shutdown`
+		)
+		acceleratedShutdownWorker(workerRollingOver)
+	}
+
+	function handleRolloverWorkerAcceleratedGracefulShutdownTimeout(): void {
+		if (!workerRollingOver) {
+			logger.warn('Rollover worker accelerated shutdown timeout triggered but no worker rolling over')
+			return
+		}
+		if (workerRollingOver[kExited]) {
+			logger.warn(`Rollover worker accelerated shutdown timeout triggered but worker "${workerRollingOver.id}" already exited`)
+			return
+		}
+		logger.warn(
+			`Timed out waiting for rollover accelerated shutdown of worker "${workerRollingOver.id}"`
+			+ ` from generation ${workerRollingOver[kGenerationId]}, beginning immediate shutdown`
+		)
+		immediateShutdownWorker(workerRollingOver)
+	}
+
+	/** Instruct a worker to begin a graceful shutdown */
+	function gracefullyShutdownWorker(worker: ClusterWorker): boolean {
+		let didSomething = false
+		while (worker[kSignals] < WORKER_GRACEFUL_SHUTDOWN_SIGNAL_COUNT) {
+			logger.debug(`Instructing graceful shutdown of worker "${worker.id}" with SIGTERM`)
+			worker[kSignals]++
+			worker.kill('SIGTERM')
+			didSomething = true
+		}
+		return didSomething
+	}
+
+	/** Instruct a worker to begin an accelerated shutdown */
+	function acceleratedShutdownWorker(worker: ClusterWorker): boolean {
+		let didSomething = false
+		while (worker[kSignals] < WORKER_ACCELERATED_SHUTDOWN_SIGNAL_COUNT) {
+			logger.debug(`Instructing accelerated shutdown of worker "${worker.id}" with SIGTERM`)
+			worker[kSignals]++
+			worker.kill('SIGTERM')
+			didSomething = true
+		}
+		return didSomething
+	}
+
+	/** Instruct a worker to shut down immediately */
+	function immediateShutdownWorker(worker: ClusterWorker): boolean {
+		let didSomething = false
+		while (worker[kSignals] < WORKER_IMMEDIATE_SHUTDOWN_SIGNAL_COUNT) {
+			logger.debug(`Instructing immediate shutdown of worker "${worker.id}" with SIGKILL`)
+			worker[kSignals]++
+			worker.kill('SIGKILL')
+			didSomething = true
+		}
+		return didSomething
+	}
+
 	/** Instruct all workers to begin a graceful shutdown */
 	function gracefulShutdown(): boolean {
 		if (state !== State.STOPPING) state = State.STOPPING
 		let didSomething = false
 		for (const workerId in cluster.workers) {
 			const worker = cluster.workers[workerId]!
-			while (worker[kSignals] < WORKER_GRACEFUL_SHUTDOWN_SIGNAL_COUNT) {
-				logger.debug(`Instructing graceful shutdown of worker "${worker.id}" with SIGTERM`)
-				worker[kSignals]++
-				worker.kill('SIGTERM')
-				didSomething = true
-			}
+			didSomething = gracefullyShutdownWorker(worker)
 		}
 		return didSomething
 	}
@@ -121,12 +293,7 @@ export async function manageCluster(opts: {
 		let didSomething = false
 		for (const workerId in cluster.workers) {
 			const worker = cluster.workers[workerId]!
-			while (worker[kSignals] < WORKER_ACCELERATED_SHUTDOWN_SIGNAL_COUNT) {
-				logger.debug(`Instructing accelerated shutdown of worker "${worker.id}" with SIGTERM`)
-				worker[kSignals]++
-				worker.kill('SIGTERM')
-				didSomething = true
-			}
+			didSomething = acceleratedShutdownWorker(worker)
 		}
 		return didSomething
 	}
@@ -137,12 +304,7 @@ export async function manageCluster(opts: {
 		let didSomething = false
 		for (const workerId in cluster.workers) {
 			const worker = cluster.workers[workerId]!
-			while (worker[kSignals] < WORKER_IMMEDIATE_SHUTDOWN_SIGNAL_COUNT) {
-				logger.debug(`Instructing immediate shutdown of worker "${worker.id}" with SIGKILL`)
-				worker[kSignals]++
-				worker.kill('SIGKILL')
-				didSomething = true
-			}
+			didSomething = immediateShutdownWorker(worker)
 		}
 		return didSomething
 	}
@@ -200,7 +362,14 @@ export async function manageCluster(opts: {
 	let exitedCount = 0
 	/** Whether any worker has successfully started listening */
 	let hasListened = false
+	let checkRolloverQueued = false
 	let tickQueued = false
+
+	function queueCheckRollover() {
+		if (checkRolloverQueued) return
+		checkRolloverQueued = true
+		nextTick(checkRollover)
+	}
 
 	function queueTick() {
 		if (tickQueued) return
@@ -269,8 +438,10 @@ export async function manageCluster(opts: {
 							COUNTDOWN: '0',
 						}
 						const worker = cluster.fork(forkEnv)
+						worker[kGenerationId] = currentGenerationId
 						worker[kSignals] = 0
 						worker[kListening] = false
+						worker[kExited] = false
 						forkCount++
 						workerLastAddedAt = now
 						workerAddedTimeout = setTimeout(tick, addWorkerDebounceMs)
@@ -281,7 +452,14 @@ export async function manageCluster(opts: {
 						if (!gracefulShutdown()) {
 							logger.warn('Already at or beyond graceful shutdown of worker processes')
 						}
-						failedStartupGracefulShutdownTimeout = setTimeout(handleFailedStartupGracefulShutdownTimeout, 5_000)
+						failedStartupGracefulShutdownTimeout = setTimeout(
+							handleFailedStartupGracefulShutdownTimeout,
+							FAILED_STARTUP_GRACEFUL_SHUTDOWN_TIMEOUT
+						)
+						failedStartupAcceleratedShutdownTimeout = setTimeout(
+							handleFailedStartupAcceleratedShutdownTimeout,
+							FAILED_STARTUP_ACCELERATED_SHUTDOWN_TIMEOUT,
+						)
 						break;
 					}
 				}
@@ -310,6 +488,7 @@ export async function manageCluster(opts: {
 		hasListened = true
 		worker[kListening] = true
 		logger.debug({ address }, `Cluster worker ${worker.id} listening`)
+		queueCheckRollover()
 	})
 
 	/** Fired when a worker in the cluster disconnects from the IPC channel (shouldn't happen) */
@@ -320,10 +499,30 @@ export async function manageCluster(opts: {
 	/** Fired when a worker in the cluster exits */
 	cluster.on('exit', function(worker: ClusterWorker, code: number, signal: string) {
 		exitedCount++
+
+		worker[kExited] = true
+
+		if (worker[kGenerationId] !== currentGenerationId) {
+			// Worker is from a previous generation
+			// Kill the next worker of that generateion if there are any
+			logger.debug(`Cluster worker ${worker.id} exited from previous generation ${worker[kGenerationId]}`)
+		}
+
+		if (worker === workerRollingOver) {
+			logger.debug(`Cluster worker ${worker.id} rolled over`)
+			workerRollingOver = undefined
+			clearTimeout(workerRolloverGracefulShutdownTimeout)
+			clearTimeout(workerRolloverAcceleratedShutdownTimeout)
+		}
+
 		if (signal) {
 			logger.info(`Cluster worker ${worker.id} killed by signal ${signal}`)
+			queueCheckRollover()
 			queueTick()
-		} else if (code !== 0) {
+			return
+		}
+
+		if (code !== 0) {
 			logger.info(`Cluster worker ${worker.id} exited with error ${code}`)
 			if (checkConfig) {
 				exitErrRef ??= { err: new Error(`Cluster worker exited with code ${code}`), }
@@ -339,14 +538,29 @@ export async function manageCluster(opts: {
 						logger.error(`Unknown state ${String(state)}`)
 				}
 			}
+			queueCheckRollover()
 			queueTick()
-		} else {
-			logger.debug(`Cluster worker ${worker.id} exited`)
-			queueTick()
+			return
 		}
+
+		logger.debug(`Cluster worker ${worker.id} exited`)
+		queueCheckRollover()
+		queueTick()
 	})
 
+	function reloadHandler(signal: NodeJS.Signals): void {
+		currentGenerationId++
+		logger.info(`Beginning rollover due to signal ${signal}. New generation ID ${currentGenerationId}`)
+		queueCheckRollover()
+	}
+
+	const checkRolloverInterval = setInterval(function() {
+		logger.trace('Checking rollover (interval)')
+		queueCheckRollover()
+	}, ROLLOVER_CHECK_INTERVAL)
+
 	try {
+		process.on('SIGHUP', reloadHandler)
 		for (let i = 0, len = shutdownSignals.length; i < len; i++) {
 			process.on(shutdownSignals[i], shutdownHandler)
 		}
@@ -354,11 +568,15 @@ export async function manageCluster(opts: {
 		await promise
 	} finally {
 		logger.debug('Cluster primary done')
+		process.off('SIGHUP', reloadHandler)
 		for (let i = 0, len = shutdownSignals.length; i < len; i++) {
 			process.off(shutdownSignals[i], shutdownHandler)
 		}
+		clearInterval(checkRolloverInterval)
 		clearTimeout(failedStartupGracefulShutdownTimeout)
 		clearTimeout(failedStartupAcceleratedShutdownTimeout)
+		clearTimeout(workerRolloverGracefulShutdownTimeout)
+		clearTimeout(workerRolloverAcceleratedShutdownTimeout)
 	}
 }
 
@@ -404,3 +622,6 @@ export function getDesiredWorkerCount(opts: {
 	return desiredWorkerCount
 }
 
+function asc(a: number, b: number): number {
+	return a - b
+}
