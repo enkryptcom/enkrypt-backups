@@ -28,7 +28,7 @@ export function createHttpAppRouter(opts: {
 	logger: Logger,
 	httpConfig: ApiHttpConfig,
 	storage: FileStorage,
-	metrics?: ApiMetrics,
+	metrics?: undefined | ApiMetrics,
 	appVersion: string,
 	validators: Validators,
 	openApiDocYaml: string,

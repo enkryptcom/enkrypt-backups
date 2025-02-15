@@ -7,7 +7,7 @@ import type { FileStorage } from "./interface.js";
 import { FilesystemStorage } from './filesystem.js';
 import { NodeHttpHandler } from '@smithy/node-http-handler';
 import type { Logger } from 'pino';
-import { S3 } from '@aws-sdk/client-s3';
+import { S3, type S3ClientConfig } from '@aws-sdk/client-s3';
 import { S3Storage } from './s3.js';
 
 export function createStorage(opts: {
@@ -77,10 +77,12 @@ export function createStorage(opts: {
 				httpAgent,
 			})
 
-			const s3 = new S3({
-				region,
-				requestHandler,
-			})
+			const s3params: S3ClientConfig = {}
+			if (region) s3params.region = region
+			s3params.requestHandler = requestHandler
+
+			const s3 = new S3(s3params)
+
 			storage = new S3Storage({
 				bucket,
 				s3,

@@ -144,8 +144,8 @@ export class HttpError extends Error {
 	override name = 'HttpError'
 
 	status: number
-	data?: Record<PropertyKey, unknown>
-	headers?: [key: string, value: string][]
+	data?: undefined | Record<PropertyKey, unknown>
+	headers?: undefined | [key: string, value: string][]
 
 	constructor(
 		status: number,

@@ -8,7 +8,7 @@
 		"tsBuildInfoFile": "./build.never/.tsbuildinfo",  // https://www.typescriptlang.org/tsconfig/#tsBuildInfoFile
 
 		// Language & Environment
-		"target": "ES2023",                               // https://www.typescriptlang.org/tsconfig/#target
+		"target": "ES2024",                               // https://www.typescriptlang.org/tsconfig/#target
 		"moduleDetection": "force",                       // https://www.typescriptlang.org/tsconfig/#rootDir
 
 		// Module
@@ -27,16 +27,17 @@
 		"importHelpers": true,                            // https://www.typescriptlang.org/tsconfig/#importHelpers
 
 		// Type checking
-		"strict": true,                                   // https://www.typescriptlang.org/tsconfig/#strict
 		"alwaysStrict": true,                             // https://www.typescriptlang.org/tsconfig/#alwaysStrict
-		"useUnknownInCatchVariables": true,               // https://www.typescriptlang.org/tsconfig/#useUnknownInCatchVariables
+		"exactOptionalPropertyTypes": true,               // https://www.typescriptlang.org/tsconfig/#exactOptionalPropertyTypes
 		"noFallthroughCasesInSwitch": true,               // https://www.typescriptlang.org/tsconfig/#noFallthroughCasesInSwitch
+		"noImplicitOverride": true,                       // https://www.typescriptlang.org/tsconfig/#noImplicitOverride
+		"useUnknownInCatchVariables": true,               // https://www.typescriptlang.org/tsconfig/#useUnknownInCatchVariables
+		"strict": true,                                   // https://www.typescriptlang.org/tsconfig/#strict
 
 		// Interop constraints
 		"esModuleInterop": true,                          // https://www.typescriptlang.org/tsconfig/#esModuleInterop
 		"verbatimModuleSyntax": true,                     // https://www.typescriptlang.org/tsconfig/#verbatimModuleSyntax
 		"forceConsistentCasingInFileNames": true,         // https://www.typescriptlang.org/tsconfig/#forceConsistentCasingInFileNames
-		"noImplicitOverride": true,                       // https://www.typescriptlang.org/tsconfig/#noImplicitOverride
 
 		// Completeness
 		"skipLibCheck": true,                             // https://www.typescriptlang.org/tsconfig/#skipLibCheck

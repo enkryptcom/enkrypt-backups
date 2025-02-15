@@ -16,8 +16,9 @@ function printHelp(stream: Writable): void {
 	stream.write(`Usage: node [options] [command] [options]\n`)
 	stream.write('\n')
 	stream.write('Options:\n')
-	stream.write('  -h, --help                     Print this help message\n')
-	stream.write('  -v, --version                  Print the version\n')
+	stream.write('  -h, --help               Print this help message\n')
+	stream.write('  -v, --version            Print the version\n')
+	stream.write('  --countdown <duration>   Grace period before executing command     COUNTDOWN  10s\n')
 	stream.write('\n')
 	stream.write('Logging\n')
 	stream.write('  --log-level <level>            Log level                                 LOG_LEVEL              info\n')
@@ -26,12 +27,10 @@ function printHelp(stream: Writable): void {
 	stream.write('  --[no-]log-pretty-color        Colorize log output                       LOG_PRETTY_COLOR       true\n')
 	stream.write('  --[no-]log-pretty-single-line  Single line log output                    LOG_PRETTY_SINGLE_LINE false\n')
 	stream.write('  --alert-throw-level <level>    Throw alerts at this level                ALERT_THROW_LEVEL      (none)\n')
-	stream.write('  --countdown <duration>         Grace period before executing command     COUNTDOWN  10s\n')
 	stream.write('\n')
 	stream.write('Commands\n')
 	stream.write('  api       Start the API server\n')
-	stream.write('  client    Start an API client (used for testing)\n')
-	stream.write('  client2\n')
+	stream.write('  repl      Start an interactive client with the API\n')
 }
 
 function printVersion(stream: Writable): void {

@@ -180,7 +180,7 @@ export type StorageFsConfig = {
 export type StorageS3Config = {
 	driver: typeof StorageDriver.S3,
 	bucket: string,
-	region?: string,
+	region?: undefined | string,
 	rootPath: string,
 	reqConnectionTimeoutMs: number,
 	reqRequestTimeoutMs: number,
@@ -563,7 +563,7 @@ export function getApiHttpConfig(
 
 export function getApiClusterConfig(
 	env: Pick<EnvironmentVariables, ApiClusterEnvironmentVariable>,
-	force?: { standalone?: boolean, }
+	force?: undefined | { standalone?: undefined | boolean, }
 ): ClusterConfig {
 	const {
 		API_CLUSTER_STANDALONE,

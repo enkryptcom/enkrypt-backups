@@ -27,7 +27,7 @@ type TaggedDeferrable =
 	| { type: typeof DeferrableType.USE, deferrable: Disposable | AsyncDisposable, }
 
 export class Disposer implements AsyncDisposable {
-	private readonly _logger?: Logger
+	private readonly _logger?: undefined | Logger
 	private readonly _deferrables: TaggedDeferrable[]
 
 	constructor(opts?: { logger?: Logger, }) {
