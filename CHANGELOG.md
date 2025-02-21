@@ -1,6 +1,8 @@
 ## Upcoming
 
-- Graceful no-downtime reload in cluster mode via SIGHUP
+## Release 1.1.1 (2025-02-21)
+
+- Release testing, no changes
 
 ## Release 1.1.0 (2025-02-10)
 
