@@ -1,6 +1,4 @@
-## Upcoming
-
-## Upcoming
+## Release 1.2.0 (2025-02-21)
 
 - Fix a bug with metrics in cluster mode
 - Upgrade NPM dependencies
