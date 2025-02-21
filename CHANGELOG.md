@@ -1,5 +1,9 @@
 ## Upcoming
 
+## Release 1.1.2 (2025-02-21)
+
+- Release testing, no changes
+
 ## Release 1.1.1 (2025-02-21)
 
 - Release testing, no changes
