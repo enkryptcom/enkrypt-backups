@@ -1,5 +1,11 @@
 ## Upcoming
 
+## Upcoming
+
+- Fix a bug with metrics in cluster mode
+- Upgrade NPM dependencies
+- Upgrade NodeJS version
+
 ## Release 1.1.2 (2025-02-21)
 
 - Release testing, no changes

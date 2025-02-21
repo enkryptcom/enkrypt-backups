@@ -125,12 +125,9 @@ export async function apiCommand(opts: ApiCommandOptions): Promise<void> {
 
 			let metrics: undefined | ApiMetrics
 			if (prometheusConfig.enabled) {
-				let metrics: undefined | ApiMetrics
-				if (prometheusConfig.enabled) {
-					const registry = new AggregatorRegistry<PrometheusContentType>()
-					AggregatorRegistry.setRegistries([registry])
-					metrics = createApiMetrics({ registry, disposer, })
-				}
+				const registry = new AggregatorRegistry<PrometheusContentType>()
+				AggregatorRegistry.setRegistries([registry])
+				metrics = createApiMetrics({ registry, disposer, })
 			}
 
 			const [{ httpServer, httpRouter, }, { serve, }] = await allSettled([
