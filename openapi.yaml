@@ -1,0 +1,302 @@
+# openapi.yaml
+openapi: 3.1.0
+info:
+  title: Enkrypt Backend API
+  version: 1.0.0
+paths:
+  /get:
+    get:
+      operationId: GetRoot
+      responses:
+        200:
+          $ref: '#/components/responses/GetRootSuccess'
+
+  /health:
+    get:
+      operationId: GetHealth
+      responses:
+        200:
+          $ref: '#/components/responses/GetHealthSuccess'
+
+  /version:
+    get:
+      operationId: GetVersion
+      responses:
+        200:
+          $ref: '#/components/responses/GetVersionSuccess'
+
+  /schema:
+    get:
+      operationId: GetSchemaJson
+      responses:
+        200:
+          $ref: '#/components/responses/GetSchemaJsonSuccess'
+
+  /schema.json:
+    get:
+      operationId: GetSchemaJson
+      responses:
+        200:
+          $ref: '#/components/responses/GetSchemaJsonSuccess'
+
+
+  /schema.yml:
+    get:
+      operationId: GetSchemaYml
+      responses:
+        200:
+          $ref: '#/components/responses/GetSchemaYamlSuccess'
+
+  /schema.yaml:
+    get:
+      operationId: GetSchemaYaml
+      responses:
+        200:
+          $ref: '#/components/responses/GetSchemaYamlSuccess'
+
+  /backups/{publicKey}:
+    get:
+      operationId: GetUserBackups
+      parameters:
+        - $ref: '#/components/parameters/PathPublicKey'
+        - $ref: '#/components/parameters/QuerySignature'
+      responses:
+        200:
+          $ref: '#/components/responses/GetUserBackupsSuccess'
+
+  /backups/{publicKey}/users/{userId}:
+    get:
+      operationId: GetUserBackup
+      parameters:
+        - $ref: '#/components/parameters/PathPublicKey'
+        - $ref: '#/components/parameters/PathUserId'
+        - $ref: '#/components/parameters/QuerySignature'
+      responses:
+        200:
+          $ref: '#/components/responses/GetUserBackupSuccess'
+    post:
+      operationId: CreateUserBackup
+      parameters:
+        - $ref: '#/components/parameters/PathPublicKey'
+        - $ref: '#/components/parameters/PathUserId'
+        - $ref: '#/components/parameters/QuerySignature'
+      requestBody:
+        $ref: '#/components/requestBodies/CreateUserBackup'
+      responses:
+        200:
+          $ref: '#/components/responses/PostUserBackupSuccess'
+    delete:
+      operationId: DeleteUserBackup
+      parameters:
+        - $ref: '#/components/parameters/PathPublicKey'
+        - $ref: '#/components/parameters/PathUserId'
+        - $ref: '#/components/parameters/QuerySignature'
+      responses:
+        200:
+          $ref: '#/components/responses/DeleteUserBackupSuccess'
+
+components:
+  parameters:
+    PathPublicKey:
+      name: publicKey
+      in: path
+      # required: true # OpenAPI 3.0 property not compatible with JSON schema
+      schema:
+        $ref: '#/components/schemas/PublicKey'
+
+    PathUserId:
+      name: userId
+      in: path
+      # required: true # OpenAPI 3.0 property not compatible with JSON schema
+      schema:
+        $ref: '#/components/schemas/UserId'
+
+    QuerySignature:
+      name: signature
+      in: query
+      # required: true # OpenAPI 3.0 property not compatible with JSON schema
+      schema:
+        $ref: '#/components/schemas/ByteString'
+
+  requestBodies:
+    CreateUserBackup:
+      content:
+        application/json:
+          $ref: '#/components/schemas/CreateUserBackupRequest'
+
+  responses:
+    GetRootSuccess:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/GetRootResponse'
+
+    GetHealthSuccess:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/GetHealthResponse'
+
+    GetVersionSuccess:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/GetVersionResponse'
+
+    GetSchemaYamlSuccess:
+      content:
+        application/yaml:
+          schema:
+            $ref: '#/components/schemas/GetSchemaYamlResponse'
+
+    GetSchemaJsonSuccess:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/GetSchemaJsonResponse'
+
+    GetUserBackupsSuccess:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/GetUserBackupsResponse'
+
+    GetUserBackupSuccess:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/GetUserBackupResponse'
+
+    PostUserBackupSuccess:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PostUserBackupResponse'
+
+    DeleteUserBackupSuccess:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/DeleteUserBackupResponse'
+
+  schemas:
+    ByteString:
+      type: string
+      pattern: ^0x([0-9a-fA-F]{2})*$
+    Bytes32:
+      type: string
+      pattern: ^0x[0-9a-fA-F]{64}$
+    Bytes64:
+      type: string
+      pattern: ^0x[0-9a-fA-F]{128}$
+    Hex:
+      type: string
+      pattern: ^0x[0-9a-fA-F]*$
+    UUID:
+      type: string
+      pattern: ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$
+    PublicKey:
+      $ref: '#/components/schemas/Bytes64'
+    UserId:
+      $ref: '#/components/schemas/UUID'
+
+    GetRootResponse:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+
+    GetHealthResponse:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+
+    GetVersionResponse:
+      type: object
+      required:
+        - version
+      properties:
+        version:
+          type: string
+
+    GetSchemaYamlResponse:
+      type: string
+
+    GetSchemaJsonResponse:
+      type: object
+      additionalProperties: true
+
+    CreateUserBackupRequest:
+      type: object
+      required:
+        - payload
+      properties:
+        payload:
+          $ref: '#/components/schemas/ByteString'
+
+    PostUserBackupResponse:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+
+    DeleteUserBackupResponse:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+
+    GetUserBackupsResponse:
+      type: object
+      required:
+        - backups
+      properties:
+        backups:
+          type: array
+          items:
+            $ref: '#/components/schemas/BackupSummary'
+
+    GetUserBackupResponse:
+      type: object
+      required:
+        - backup
+      properties:
+        backup:
+          $ref: '#/components/schemas/Backup'
+
+    BackupSummary:
+      type: object
+      required:
+        - updatedAt
+        - userId
+      properties:
+        updatedAt:
+          type: string
+          format: date-time
+        userId:
+          type: string
+
+    Backup:
+      type: object
+      required:
+        - updatedAt
+        - userId
+        - payload
+      properties:
+        updatedAt:
+          type: string
+          format: date-time
+        userId:
+          type: string
+        payload:
+          $ref: '#/components/schemas/ByteString'
+

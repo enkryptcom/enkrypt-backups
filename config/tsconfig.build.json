@@ -1,0 +1,17 @@
+{
+	// https://www.typescriptlang.org/tsconfig
+	"extends": ["../tsconfig.json"],
+	"exclude": [
+		"../src/**/*.test.ts",
+		"../src/**/*.spec.ts",
+	],
+	"compilerOptions": {
+		// Project
+		"incremental": true,
+		"tsBuildInfoFile": "../build/.tsbuildinfo",
+
+		// Emit
+		"noEmit": false,
+		"outDir": "../build",
+	}
+}

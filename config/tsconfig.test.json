@@ -1,0 +1,13 @@
+{
+	// https://www.typescriptlang.org/tsconfig
+	"extends": ["../tsconfig.json"],
+	"compilerOptions": {
+		// Project
+		"incremental": true,
+		"tsBuildInfoFile": "../build.test/.tsbuildinfo",
+
+		// Emit
+		"noEmit": false,
+		"outDir": "../build.test",
+	}
+}
