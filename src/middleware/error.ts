@@ -15,7 +15,7 @@ export function errorHandlerMiddleware(opts: {
 			err = _err
 		} else {
 			err = new HttpError(HttpStatus.InternalServerError, undefined)
-			req.ctx.logger.error({ err: _err }, 'Unhandled error')
+			req.ctx.logger.error({ err: _err }, 'Unhandled HTTP error')
 		}
 
 		let result: Record<PropertyKey, unknown>

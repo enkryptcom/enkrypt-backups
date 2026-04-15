@@ -1,3 +1,7 @@
+## Release 1.4.0
+
+- Update HTTP logline
+
 ## Release 1.3.0 (2025-02-21)
 
 - Downgrade NodeJS version (not available yet)
