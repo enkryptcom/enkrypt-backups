@@ -4,7 +4,7 @@ import { HttpError, HttpStatus } from "../../../utils/http.js"
 import { bufferToByteString, bytesToByteString, byteStringToBytes, parseByteString, parseUUID } from "../../../utils/coersion.js"
 import { createHash } from "node:crypto"
 import type { FileStorage } from "../../../storage/interface.js"
-import { ecrecover, fromRpcSig, hashPersonalMessage } from "@ethereumjs/util"
+import { ecrecover, fromRPCSig, hashPersonalMessage } from "@ethereumjs/util"
 import { ERROR_MESSAGE } from "../../../errors.js"
 import type { Validators } from "../../../validation.js"
 
@@ -69,7 +69,7 @@ export default function createDeleteUserBackupHandler(opts: {
 				`${userId}-DELETE-BACKUP-${ymdub}`
 			])
 
-			const esig = fromRpcSig(parseByteString(signature))
+			const esig = fromRPCSig(parseByteString(signature))
 			let provenOwnership = false
 			for (const message of legitMessages) {
 				const messageHash = hashPersonalMessage(Buffer.from(message, 'utf8'))

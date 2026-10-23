@@ -1,5 +1,5 @@
 import cluster from 'node:cluster'
-import type { ClusterSettings, Worker as ClusterWorker, Address as ClusterAddress } from 'node:cluster'
+import type { ClusterSettings, Address as ClusterAddress } from 'node:cluster'
 import { createShutdownHandler } from "../utils/shutdown.js";
 import { nextTick } from 'node:process';
 import type { EnvironmentVariables } from '../env.js';
@@ -92,7 +92,7 @@ export async function manageCluster(opts: {
 	let failedStartupAcceleratedShutdownTimeout: undefined | ReturnType<typeof setTimeout>
 
 	// We only roll over one worker at a time to avoid downtime
-	let workerRollingOver: undefined | ClusterWorker
+	let workerRollingOver: undefined | cluster.Worker
 	let workerRolloverGracefulShutdownTimeout: undefined | ReturnType<typeof setTimeout>
 	let workerRolloverAcceleratedShutdownTimeout: undefined | ReturnType<typeof setTimeout>
 
@@ -145,7 +145,7 @@ export async function manageCluster(opts: {
 			return
 		}
 
-		const generations = new Map<number, ClusterWorker[]>()
+		const generations = new Map<number, cluster.Worker[]>()
 		let lowestGenerationId: undefined | number
 		let highestGenerationId: undefined | number
 
@@ -176,7 +176,7 @@ export async function manageCluster(opts: {
 		const generationIdsAsc = Array.from(generations.keys()).sort(asc)
 
 		// If possible, remove a worker from the oldest generation
-		let workerToRemove: undefined | ClusterWorker
+		let workerToRemove: undefined | cluster.Worker
 		let otherWorkersAreListening: undefined | boolean
 		for (let i = 0, len = generationIdsAsc.length; i < len; i++) {
 			const generationId = generationIdsAsc[i]
@@ -241,7 +241,7 @@ export async function manageCluster(opts: {
 	}
 
 	/** Instruct a worker to begin a graceful shutdown */
-	function gracefullyShutdownWorker(worker: ClusterWorker): boolean {
+	function gracefullyShutdownWorker(worker: cluster.Worker): boolean {
 		let didSomething = false
 		while (worker[kSignals] < WORKER_GRACEFUL_SHUTDOWN_SIGNAL_COUNT) {
 			logger.debug(`Instructing graceful shutdown of worker "${worker.id}" with SIGTERM`)
@@ -253,7 +253,7 @@ export async function manageCluster(opts: {
 	}
 
 	/** Instruct a worker to begin an accelerated shutdown */
-	function acceleratedShutdownWorker(worker: ClusterWorker): boolean {
+	function acceleratedShutdownWorker(worker: cluster.Worker): boolean {
 		let didSomething = false
 		while (worker[kSignals] < WORKER_ACCELERATED_SHUTDOWN_SIGNAL_COUNT) {
 			logger.debug(`Instructing accelerated shutdown of worker "${worker.id}" with SIGTERM`)
@@ -265,7 +265,7 @@ export async function manageCluster(opts: {
 	}
 
 	/** Instruct a worker to shut down immediately */
-	function immediateShutdownWorker(worker: ClusterWorker): boolean {
+	function immediateShutdownWorker(worker: cluster.Worker): boolean {
 		let didSomething = false
 		while (worker[kSignals] < WORKER_IMMEDIATE_SHUTDOWN_SIGNAL_COUNT) {
 			logger.debug(`Instructing immediate shutdown of worker "${worker.id}" with SIGKILL`)
@@ -379,7 +379,7 @@ export async function manageCluster(opts: {
 
 	function tick() {
 		tickQueued = false
-		const workers = Object.values(cluster.workers!) as ClusterWorker[]
+		const workers = Object.values(cluster.workers!) as cluster.Worker[]
 		const workerCount = workers.length
 
 		if (checkConfig && exitedCount === desiredWorkerCount) {
@@ -471,7 +471,7 @@ export async function manageCluster(opts: {
 		}
 	}
 
-	cluster.on('fork', function(worker: ClusterWorker) {
+	cluster.on('fork', function(worker: cluster.Worker) {
 		logger.debug(`Cluster worker ${worker.id} forked`)
 	})
 
@@ -479,12 +479,12 @@ export async function manageCluster(opts: {
 		logger.debug({ settings, }, `Cluster setup`)
 	})
 
-	cluster.on('online', function(worker: ClusterWorker) {
+	cluster.on('online', function(worker: cluster.Worker) {
 		logger.debug(`Cluster worker ${worker.id} online`)
 	})
 
 	/** Fired when a worker in the cluster starts listening for HTTP requests */
-	cluster.on('listening', function(worker: ClusterWorker, address: ClusterAddress) {
+	cluster.on('listening', function(worker: cluster.Worker, address: ClusterAddress) {
 		hasListened = true
 		worker[kListening] = true
 		logger.debug({ address }, `Cluster worker ${worker.id} listening`)
@@ -492,12 +492,12 @@ export async function manageCluster(opts: {
 	})
 
 	/** Fired when a worker in the cluster disconnects from the IPC channel (shouldn't happen) */
-	cluster.on('disconnect', function(worker: ClusterWorker) {
+	cluster.on('disconnect', function(worker: cluster.Worker) {
 		logger.debug(`Cluster worker ${worker.id} disconnected`)
 	})
 
 	/** Fired when a worker in the cluster exits */
-	cluster.on('exit', function(worker: ClusterWorker, code: number, signal: string) {
+	cluster.on('exit', function(worker: cluster.Worker, code: number, signal: string) {
 		exitedCount++
 
 		worker[kExited] = true

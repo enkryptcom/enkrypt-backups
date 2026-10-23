@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
-import { Agent as HttpsAgent } from 'node:https'
-import { Agent as HttpAgent, } from 'node:http'
+import { Agent as HttpsAgent, type AgentOptions as HttpsAgentOptions } from 'node:https'
+import { Agent as HttpAgent, type AgentOptions as HttpAgentOptions } from 'node:http'
 import { StorageDriver, type StorageConfig } from "../env.js";
 import type { Disposer } from "../utils/disposer.js";
 import type { FileStorage } from "./interface.js";
@@ -9,6 +9,7 @@ import { NodeHttpHandler } from '@smithy/node-http-handler';
 import type { Logger } from 'pino';
 import { S3, type S3ClientConfig } from '@aws-sdk/client-s3';
 import { S3Storage } from './s3.js';
+import type { SocketConstructorOpts } from 'node:net';
 
 export function createStorage(opts: {
 	logger: Logger,
@@ -46,24 +47,26 @@ export function createStorage(opts: {
 				agentTcpNodelay,
 			} = storageConfig
 
-			const httpsAgent = new HttpsAgent({
+			const httpsOptions: HttpsAgentOptions & Pick<SocketConstructorOpts, 'noDelay'> = {
 				keepAlive: agentKeepAlive,
 				keepAliveMsecs: agentKeepAliveMs,
 				maxSockets: agentMaxSockets,
 				timeout: agentTimeoutMs,
 				noDelay: agentTcpNodelay,
-			})
+			}
+			const httpsAgent = new HttpsAgent(httpsOptions)
 			disposer.defer(function() {
 				logger.debug('Disposing s3 https agent')
 				httpsAgent.destroy()
 			})
-			const httpAgent = new HttpAgent({
+			const httpOptions: HttpAgentOptions & Pick<SocketConstructorOpts, 'noDelay'> = {
 				keepAlive: agentKeepAlive,
 				keepAliveMsecs: agentKeepAliveMs,
 				maxSockets: agentMaxSockets,
 				timeout: agentTimeoutMs,
 				noDelay: agentTcpNodelay,
-			})
+			}
+			const httpAgent = new HttpAgent(httpOptions)
 			disposer.defer(function() {
 				logger.debug('Disposing s3 http agent')
 				httpAgent.destroy()
