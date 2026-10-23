@@ -3,8 +3,9 @@ import type { Writable } from "node:stream"
 import type { GlobalOptions, UUID } from "../types.js"
 import { randomBytes, randomUUID, } from "node:crypto"
 import { bufferToByteString, bytesToByteString, byteStringToBuffer, isUUID, } from "../utils/coersion.js"
-import { ecsign, hashPersonalMessage, privateToPublic, toRpcSig } from "@ethereumjs/util"
+import { hashPersonalMessage, privateToPublic, toRPCSig } from "@ethereumjs/util"
 import type { components } from "../openapi.js"
+import { ecsign } from '../utils/ecsign.js';
 
 function printHelp(stream: Writable): void {
 	stream.write(`Usage: node [options] repl [options]\n`)
@@ -340,7 +341,7 @@ async function createBackup(state: ReplState, input: string): Promise<boolean> {
 	const payload = bufferToByteString(payloadBuf)
 	const msgHash = hashPersonalMessage(payloadBuf)
 	const ecsig = ecsign(msgHash, state.privkey)
-	const sig = toRpcSig(ecsig.v, ecsig.r, ecsig.s)
+	const sig = toRPCSig(ecsig.v, ecsig.r, ecsig.s)
 	const body: components['schemas']['CreateUserBackupRequest'] = { payload, }
 	const url = `${state.apiUrl}/backups/${bytesToByteString(state.pubkey)}/users/${state.userid}?signature=${sig}`
 	try {
@@ -376,7 +377,7 @@ async function deleteBackup(state: ReplState): Promise<boolean> {
 	const msg = `${state.userid}-DELETE-BACKUP-${ymd}`
 	const msgHash = hashPersonalMessage(Buffer.from(msg, 'utf8'))
 	const ecsig = ecsign(msgHash, state.privkey)
-	const sig = toRpcSig(ecsig.v, ecsig.r, ecsig.s)
+	const sig = toRPCSig(ecsig.v, ecsig.r, ecsig.s)
 	const url = `${state.apiUrl}/backups/${bytesToByteString(state.pubkey)}/users/${state.userid}?signature=${sig}`
 	try {
 		state.repl.output.write(`${url}\n`)
@@ -407,7 +408,7 @@ async function listBackups(state: ReplState): Promise<boolean> {
 	const msg = `${bytesToByteString(state.pubkey)}-GET-BACKUPS-${ymd}`
 	const msgHash = hashPersonalMessage(Buffer.from(msg, 'utf8'))
 	const ecsig = ecsign(msgHash, state.privkey)
-	const sig = toRpcSig(ecsig.v, ecsig.r, ecsig.s)
+	const sig = toRPCSig(ecsig.v, ecsig.r, ecsig.s)
 	const url = `${state.apiUrl}/backups/${bytesToByteString(state.pubkey)}?signature=${sig}`
 	try {
 		state.repl.output.write(`${url}\n`)
@@ -448,7 +449,7 @@ async function getBackup(state: ReplState): Promise<boolean> {
 	const msg = `${state.userid}-GET-BACKUP-${ymd}`
 	const msgHash = hashPersonalMessage(Buffer.from(msg, 'utf8'))
 	const ecsig = ecsign(msgHash, state.privkey)
-	const sig = toRpcSig(ecsig.v, ecsig.r, ecsig.s)
+	const sig = toRPCSig(ecsig.v, ecsig.r, ecsig.s)
 	const url = `${state.apiUrl}/backups/${bytesToByteString(state.pubkey)}/users/${state.userid}?signature=${sig}`
 	try {
 		state.repl.output.write(`${url}\n`)

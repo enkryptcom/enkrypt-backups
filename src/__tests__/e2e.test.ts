@@ -8,7 +8,7 @@ import { readFile } from "node:fs/promises";
 import { parse as parseYaml } from 'yaml'
 import { type OpenAPIV3_1 } from "openapi-types";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
-import { ecsign, hashPersonalMessage, privateToPublic, toRpcSig, } from '@ethereumjs/util'
+import { hashPersonalMessage, privateToPublic, toRPCSig, } from '@ethereumjs/util'
 import { bufferToByteString, bytesToByteString, byteStringToBytes, } from "../utils/coersion.js";
 import pinoPretty from 'pino-pretty'
 import { join } from "node:path";
@@ -17,15 +17,15 @@ import type { Backup } from "../storage/interface.js";
 import { getApiHttpConfig, getStorageConfig, } from "../env.js";
 import { setup } from "../commands/api/setup.js";
 import { ERROR_MESSAGE } from "../errors.js";
-
+import { ecsign } from "../utils/ecsign.js";
 
 describe('e2e', { timeout: 10_000, }, function() {
 	// YOLO
 	it('should work', async function() {
 		const logger = pino(pinoPretty({ singleLine: true, colorize: true, sync: true, }))
 		// You can turn on logging by changing the level to 'trace' to debug the test
-		logger.level = 'silent'
-		// logger.level = 'trace'
+		// logger.level = 'silent'
+		logger.level = 'trace'
 		await using disposer = new Disposer()
 
 		const host = '127.0.0.1'
@@ -38,6 +38,7 @@ describe('e2e', { timeout: 10_000, }, function() {
 		const storageConfig = getStorageConfig({
 			STORAGE_DRIVER: 'FS',
 			STORAGE_FILESYSTEM_ROOT_DIRPATH: 'storage.tests',
+			STORAGE_FILESYSTEM_TMP_DIRPATH: 'storage.tests/tmp',
 		})
 
 		const config = await setup({
@@ -254,7 +255,7 @@ describe('e2e', { timeout: 10_000, }, function() {
 		const postBackupResult = await new Promise<PostBackupResult>(function(res, rej) {
 			const messageHash = hashPersonalMessage(mockEncryptedBackup)
 			const ecsig = ecsign(messageHash, privkey)
-			const signature = toRpcSig(ecsig.v, ecsig.r, ecsig.s)
+			const signature = toRPCSig(ecsig.v, ecsig.r, ecsig.s)
 
 			const body: components['schemas']['CreateUserBackupRequest'] = {
 				payload: bufferToByteString(mockEncryptedBackup),
@@ -348,7 +349,7 @@ describe('e2e', { timeout: 10_000, }, function() {
 			const message = `${pubkey}-GET-BACKUPS-${(now.getUTCMonth() + 1).toString().padStart(2, '0')}-${now.getUTCDate().toString().padStart(2, '0')}-${now.getUTCFullYear()}`
 			const messageHash = hashPersonalMessage(Buffer.from(message, 'utf8'))
 			const ecsig = ecsign(messageHash, privkey)
-			const signature = toRpcSig(ecsig.v, ecsig.r, ecsig.s)
+			const signature = toRPCSig(ecsig.v, ecsig.r, ecsig.s)
 
 			const request = http.request({
 				host,
@@ -411,7 +412,7 @@ describe('e2e', { timeout: 10_000, }, function() {
 			const message = `${userId}-GET-BACKUP-${(now.getUTCMonth() + 1).toString().padStart(2, '0')}-${now.getUTCDate().toString().padStart(2, '0')}-${now.getUTCFullYear()}`
 			const messageHash = hashPersonalMessage(Buffer.from(message, 'utf8'))
 			const ecsig = ecsign(messageHash, privkey)
-			const signature = toRpcSig(ecsig.v, ecsig.r, ecsig.s)
+			const signature = toRPCSig(ecsig.v, ecsig.r, ecsig.s)
 
 			const request = http.request({
 				host,
@@ -475,7 +476,7 @@ describe('e2e', { timeout: 10_000, }, function() {
 			const message = `${userId}-DELETE-BACKUP-${(now.getUTCMonth() + 1).toString().padStart(2, '0')}-${now.getUTCDate().toString().padStart(2, '0')}-${now.getUTCFullYear()}`
 			const messageHash = hashPersonalMessage(Buffer.from(message, 'utf8'))
 			const ecsig = ecsign(messageHash, privkey)
-			const signature = toRpcSig(ecsig.v, ecsig.r, ecsig.s)
+			const signature = toRPCSig(ecsig.v, ecsig.r, ecsig.s)
 
 			const request = http.request({
 				host,
@@ -530,7 +531,7 @@ describe('e2e', { timeout: 10_000, }, function() {
 			const message = `${pubkey}-GET-BACKUPS-${(now.getUTCMonth() + 1).toString().padStart(2, '0')}-${now.getUTCDate().toString().padStart(2, '0')}-${now.getUTCFullYear()}`
 			const messageHash = hashPersonalMessage(Buffer.from(message, 'utf8'))
 			const ecsig = ecsign(messageHash, privkey)
-			const signature = toRpcSig(ecsig.v, ecsig.r, ecsig.s)
+			const signature = toRPCSig(ecsig.v, ecsig.r, ecsig.s)
 
 			const request = http.request({
 				host,
@@ -587,7 +588,7 @@ describe('e2e', { timeout: 10_000, }, function() {
 			const message = `${userId}-GET-BACKUP-${(now.getUTCMonth() + 1).toString().padStart(2, '0')}-${now.getUTCDate().toString().padStart(2, '0')}-${now.getUTCFullYear()}`
 			const messageHash = hashPersonalMessage(Buffer.from(message, 'utf8'))
 			const ecsig = ecsign(messageHash, privkey)
-			const signature = toRpcSig(ecsig.v, ecsig.r, ecsig.s)
+			const signature = toRPCSig(ecsig.v, ecsig.r, ecsig.s)
 
 			const request = http.request({
 				host,

@@ -5,7 +5,7 @@ import { bufferToByteString, bytesToByteString, byteStringToBytes, parseByteStri
 import { createHash } from "node:crypto"
 import type { FileStorage } from "../../../storage/interface.js"
 import { ERROR_MESSAGE } from "../../../errors.js"
-import { ecrecover, fromRpcSig, hashPersonalMessage } from "@ethereumjs/util"
+import { ecrecover, fromRPCSig, hashPersonalMessage } from "@ethereumjs/util"
 import type { Validators } from "../../../validation.js"
 
 type Params = operations['GetUserBackup']['parameters']['path']
@@ -69,7 +69,7 @@ export default function createGetUserBackupHandler(opts: {
 				`${userId}-GET-BACKUP-${ymdub}`
 			])
 
-			const esig = fromRpcSig(parseByteString(signature))
+			const esig = fromRPCSig(parseByteString(signature))
 			let provenOwnership = false
 			for (const message of legitMessages) {
 				const messageHash = hashPersonalMessage(Buffer.from(message, 'utf8'))
