@@ -1,0 +1,2 @@
+# Don't install packages published more recently than 10,080 minutes ago (7 days ago)
+minimumReleaseAge: 10080
