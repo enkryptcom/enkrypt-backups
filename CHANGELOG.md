@@ -1,4 +1,6 @@
-## Upcoming
+# Changelog
+
+## Release: v1.4.1 (2026-10-23)
 
 - Upgrade NodeJS from v23.7.0 to v24.22.1
 - Upgrade NPM dev dependencies
@@ -24,7 +26,7 @@
   - pino-pretty: 13.0.0 -> 13.2.0
   - yaml: 2.7.0 -> 2.9.1
 
-## Release 1.4.0
+## Release 1.4.0 (2026-04-15)
 
 - Update HTTP logline
 
