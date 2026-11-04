@@ -24,8 +24,8 @@ describe('e2e', { timeout: 10_000, }, function() {
 	it('should work', async function() {
 		const logger = pino(pinoPretty({ singleLine: true, colorize: true, sync: true, }))
 		// You can turn on logging by changing the level to 'trace' to debug the test
-		// logger.level = 'silent'
-		logger.level = 'trace'
+		logger.level = 'silent'
+		// logger.level = 'trace'
 		await using disposer = new Disposer()
 
 		const host = '127.0.0.1'

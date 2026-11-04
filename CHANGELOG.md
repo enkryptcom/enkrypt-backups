@@ -15,8 +15,8 @@
   - typescript: 5.7.3 -> 7.0.2
 - Upgrade NPM core dependencies
   - @aws-sdk/client-s3: 3.750.0 -> 3.1152.0
-  - @ethereumjs/util: 9.1.0 - 10.1.3
-  - @smithy/node-http-handler: 4.0.0 - 4.12.1
+  - @ethereumjs/util: 9.1.0 -> 10.1.3
+  - @smithy/node-http-handler: 4.0.0 -> 4.12.1
   - ajv: 8.17.1 -> 8.20.0
   - compression: 1.8.0 -> 1.8.2
   - cors: 2.8.5 -> 2.8.6
