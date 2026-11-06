@@ -4,7 +4,7 @@ import { HttpError, HttpStatus } from "../../../utils/http.js"
 import { bufferToByteString, bytesToByteString, byteStringToBytes, parseByteString, parseUUID } from "../../../utils/coersion.js"
 import { createHash } from "node:crypto"
 import type { Backup, FileStorage } from "../../../storage/interface.js"
-import { ecrecover, fromRpcSig, hashPersonalMessage } from "@ethereumjs/util"
+import { ecrecover, fromRPCSig, hashPersonalMessage } from "@ethereumjs/util"
 import { ERROR_MESSAGE } from "../../../errors.js"
 import type { Validators } from "../../../validation.js"
 
@@ -62,7 +62,7 @@ export default function createCreateUserBackupHandler(opts: {
 			const signature = parseByteString(signatureParam)
 			const payload = byteStringToBytes(parseByteString(body.payload))
 
-			const esig = fromRpcSig(parseByteString(signature))
+			const esig = fromRPCSig(parseByteString(signature))
 			const messageHash = hashPersonalMessage(payload)
 			const messagePubkey = bytesToByteString(ecrecover(messageHash, esig.v, esig.r, esig.s))
 
