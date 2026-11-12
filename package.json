@@ -4,6 +4,9 @@
 	"private": true,
 	"type": "module",
 	"author": "Nick Kelly",
+	"engines": {
+		"node": ">=24.22.3 <25"
+	},
 	"scripts": {
 		"typecheck": "tsc -p ./tsconfig.json --noEmit --tsBuildInfoFile ./build.typecheck/.tsbuildinfo",
 		"codegen:openapi": "openapi-typescript openapi.yaml --output src/openapi.d.ts",
