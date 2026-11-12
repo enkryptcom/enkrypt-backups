@@ -1,5 +1,9 @@
 # Changelog
 
+## Upcoming
+
+- Flexible NodeJS version support: >=24.22.3 <25 (any version in 24.x greater than or equal to 24.22.3)
+
 ## Release: v1.4.1 (2026-10-23)
 
 - Upgrade NodeJS from v23.7.0 to v24.22.1
