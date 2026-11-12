@@ -1,6 +1,6 @@
 # Changelog
 
-## Upcoming
+## Release: v1.4.2 (2026-11-12)
 
 - Flexible NodeJS version support: >=24.22.3 <25 (any version in 24.x greater than or equal to 24.22.3)
 
