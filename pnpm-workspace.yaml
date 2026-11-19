@@ -1,2 +1,5 @@
 # Don't install packages published more recently than 10,080 minutes ago (7 days ago)
 minimumReleaseAge: 10080
+
+# Refuse to run if the current NodeJS version doesn't satisfy "engines.node" in package.json
+engineStrict: true
