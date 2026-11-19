@@ -3,6 +3,7 @@
 ## Upcoming
 
 - Flexible NodeJS version support: >=24.22.3 <25 (any version in 24.x greater than or equal to 24.22.3)
+- Strict NodeJS engine checking: pnpm refuses to run if the NodeJS version doesn't satisfy `engines.node` in package.json
 - Remove Dockerfile and Docker instructions from the README (Docker is no longer officially supported)
 
 ## Release: v1.4.1 (2026-10-23)
